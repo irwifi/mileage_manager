@@ -1,0 +1,32 @@
+{
+  "name": "mileage_manager",
+  "description": "Feul and mileage manager for automobiles.",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "set NODE_ENV=development && nodemon ./app/bin/www",
+    "debug": "set NODE_ENV=development && node --debug-brk ./app/bin/www",
+    "debug2": "start node-inspector && set NODE_ENV=development && node --debug-brk ./app/bin/www",
+    "test": "set NODE_ENV=test && mocha tests/cases --recursive --timeout 5000"
+  },
+  "dependencies": {
+    "async": "^2.1.2",
+    "bcryptjs": "^2.3.0",
+    "body-parser": "~1.15.1",
+    "bootstrap": "^3.3.7",
+    "client-sessions": "^0.7.0",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.2.0",
+    "ejs": "~2.4.1",
+    "express": "~4.13.4",
+    "jquery": "^3.1.1",
+    "jquery-validation": "^1.15.1",
+    "method": "^2.0.0",
+    "mongo": "^0.1.0",
+    "mongoose": "^4.6.5",
+    "morgan": "~1.7.0",
+    "override": "0.0.1",
+    "serve-favicon": "~2.3.0",
+    "validator": "^6.1.0"
+  }
+}

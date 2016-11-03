@@ -1,0 +1,4 @@
+node_modules
+/confg/confg_development.js
+/confg/confg_production.js
+/confg/confg_test.js
