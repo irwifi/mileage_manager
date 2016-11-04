@@ -21,11 +21,11 @@
     "express": "~4.13.4",
     "jquery": "^3.1.1",
     "jquery-validation": "^1.15.1",
-    "method": "^2.0.0",
+    "js-base64": "^2.1.9",
+    "method-override": "^2.3.6",
     "mongo": "^0.1.0",
     "mongoose": "^4.6.5",
     "morgan": "~1.7.0",
-    "override": "0.0.1",
     "serve-favicon": "~2.3.0",
     "validator": "^6.1.0"
   }

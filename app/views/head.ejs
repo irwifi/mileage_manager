@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<%# head section of the HTML page. %>
+<html>
+	<head>
+		<meta charset='utf-8' />
+		<title>
+			<% if( typeof title !== 'undefined') {%>
+				<%= title %>
+			<% } else { %>
+				Mileage Manager
+			<% } %>
+		</title>
+
+		<!-- default theme -->
+		<!-- <link rel="stylesheet" href="http://<%= host %>/css/bootstrap.min.css"> -->
+		<!-- blue theme -->
+		<link rel="stylesheet" href="http://<%= host %>/stylesheets/bootstrap.min.css">
+		<link rel="stylesheet" href="http://<%= host %>/stylesheets/style.css">
+		<link rel="stylesheet" href="http://<%= host %>/css/jquery-validation.css">
+
+		<script src="http://<%= host %>/jquery.min.js"></script>
+		<script src="http://<%= host %>/js/bootstrap.min.js"></script>
+		<script src="http://<%= host %>/jquery.validate.js"></script>
+	</head>
