@@ -6,3 +6,39 @@ body {
 a {
   color: #00B7FF;
 }
+
+/* logo */
+.logo {
+	max-height: 42px;
+	margin-top: 5px;
+	display: inline-block;
+	float: left;
+	margin-right: 4px;
+}
+
+/* class navbar-brand from bootstrap.min.css */
+.navbar-brand {
+	margin-top: 10px;
+	padding-bottom: 5px;
+	height: 40px;
+	font-size: 24px;
+}
+
+/* add 10px margin at the bottom of the element */
+.bottom_margin_10 {
+	margin-bottom: 10px;
+}
+
+/* 30px horizontal padding */
+.hoz_padding_40 {
+	padding: 0 40px;
+}
+
+/* highlight the crete admin checkbox */
+ .create_admin_checkbox {
+ 	background-color: #FAE63F;
+ 	font-weight: bold;
+ 	font-size: 16px;
+ 	color: #0764FD;
+ 	padding: 5px;
+ }

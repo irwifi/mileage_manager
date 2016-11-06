@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema(
 		lname: String,
 		username: {type: String, unique: true},
 		user_email: {type: String, unique: true, required: true},
-		password: {type: String, required: true}
+		password: {type: String, required: true},
+		user_role: {type: String, required: true, default: "user"}
 	},
 	{timestamps: true}
 );
@@ -61,16 +62,18 @@ const error_handler = (err, callback) => {
 };
 
 // check if user exists
-user.user_exist_check = (err, params, callback) => {
-	params.model = user.user_model;
-	params.condition = {};
+user.admin_exist_check = (err, params, callback) => {
+	params.doc = {};
+	params.doc.model = user.user_model;
+	params.doc.condition = { user_role: "admin" };
 	hmodels.count_doc(null, params, callback);	
 };
 
 // check if email already exists
 user.check_email_exist = (err, params, callback) => {
-	params.model = user.user_model;
-	params.condition = { "user_email": params.form_data.user_email };
+	params.doc = {};
+	params.doc.model = user.user_model;
+	params.doc.condition = { "user_email": params.form_data.user_email };
 	hmodels.count_doc(null, params, callback);
 };
 
@@ -115,7 +118,7 @@ user.send_forgot_pasword_email = (err, params, callback) => {
 };
 
 // update the password
-user.update_password = (err, params, callback) => {;
+user.update_password = (err, params, callback) => {
 	if ( params.stop === true) {
 		callback(err, params);
 	} else {
@@ -138,18 +141,22 @@ user.update_password = (err, params, callback) => {;
 
 // create new user
 user.create_new_user = (err, params, callback) => {
-	// const callback = params.final_callback;
 	error_handler(err, callback);
 
-	const count = params.doc_count;
-	if ( count > 0 ) {
-		params.error_condition = true;
-		callback(null, params);
-	} else {
+	if(params.stop !== true) {
 		params.operation = 'new_user';
 		// save new user
-		params.model = user.user_model;
-		hmodels.save_doc(null, params, callback);
+		params.doc = {};
+		params.doc.model = user.user_model;
+		params.doc.form_data = {username: params.form_data.user_email, user_email: params.form_data.user_email, password: params.form_data.password};
+		if(params.form_data.user_role !== undefined) {
+			params.doc.form_data.user_role = params.form_data.user_role;	
+		}
+		
+		hmodels.save_doc(null, params, callback);	
+	} else {
+		// do not create new user, there is some error
+		callback(err, params);
 	}
 };
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const confg = require('../../confg/confg');
 
 // make mongo db connection
+mongoose.Promise = global.Promise;
 mongoose.connect(confg.mongo.url + confg.mongo.db);
 
 const db = mongoose.connection;

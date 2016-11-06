@@ -1,39 +1,64 @@
 "use strict";
 const helper = require("../handlers/hhelper");
+const hmodels = require("../handlers/hmodels");
 const muser = require("../models/musers");
 const mpass_reset = require("../models/mpass_reset");
 
 const authen_router = helper.express.Router();
 
+// Authentication model
+// model 1: users and sign up by themselves
+// model 2: only admin can create new users
+const authen_model =  2;
+
 // route for "authen/", display login page
 authen_router.get('/', (req, res) => {
-	helper.async.waterfall([
-			(callback) => {callback(null, null, {res});},
-			muser.user_exist_check
-		], display_authen_from
-	);
+	if(authen_model === 1) {
+		const params = {
+			page: "authen",
+			host: helper.hostname,
+			title: 'User Authentication',
+			header_msg: "Please sign in to proceed"
+		};
+		res.render('index', params);
+	} else {
+		helper.async.waterfall([
+				(callback) => {callback(null, null, {res});},
+				muser.admin_exist_check
+			], display_startup_from
+		);
+	}
 });
 
 // route for "authen/signup", user sign up 
 authen_router.post("/signup", (req, res) => {
-	const user_email = helper.sanitize_data({data: req.body.signup_email});
-	const form_data = {username: user_email, user_email: user_email, password: helper.sanitize_data({data: req.body.signup_password, no_trim: true})};
+	const form_data = {};
+	form_data.user_email = helper.sanitize_data({data: req.body.signup_email});
+	form_data.password = helper.sanitize_data({data: req.body.signup_password, no_trim: true});
+	form_data.retype_password = helper.sanitize_data({data: req.body.signup_retype_password, no_trim: true});
+
+	if(authen_model === 2) {
+		form_data.user_role = helper.sanitize_data({data: req.body.user_role});
+		form_data.first_admin = helper.sanitize_data({data: req.body.first_admin});
+	}
+
 	const params = {res, req, form_data};
 
-	const validate_errors = validate_new_user(null, {user_email: form_data.user_email, password: form_data.password, retype_password: helper.sanitize_data({data: req.body.signup_retype_password, no_trim: true})});
+	const validate_errors = validate_new_user(null, {user_email: form_data.user_email, password: form_data.password, retype_password: form_data.retype_password});
 
 	if(validate_errors.length === 0) {
-		// for returning to correct parameter in callback
-		// this statement is placed here because it can not be used within check_email_exist  since it is used in other place
-		params.async_callback = true;
+		// for returning to correct parameter in async callback
+		// this parameter is used in hmodels.error_handler method
+		params.async_level = 1;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},	
 				muser.check_email_exist,
+				duplicate_email_error,
 				muser.create_new_user
 			], new_user_response
 		);
 	} else {
-		send_back_authen_errors (null, {res, form: "signup", errors: validate_errors, user_email: form_data.user_email});
+		send_back_authen_errors (null, {res, form: "signup", errors: validate_errors, form_data});
 	}
 });
 
@@ -45,14 +70,14 @@ authen_router.post("/signin", (req, res) => {
 	const validate_errors = validate_login(null, {user_email: form_data.user_email, password: form_data.password});
 
 	if(validate_errors.length === 0) {
-		params.error_form = 'signin';
+		params.form = 'signin';
 		helper.async.waterfall([
 				(async_callback) => {async_callback(null, null, params);},
 				muser.authenticate_login,
 			], send_error_or_log_uer
 		);
 	} else {
-		send_back_authen_errors (null, {res, form: "signin", errors: validate_errors, user_email: form_data.user_email});
+		send_back_authen_errors (null, {res, form: "signin", errors: validate_errors, form_data});
 	}
 });
 
@@ -151,36 +176,60 @@ authen_router.put('/reset_password', (req, res) => {
 	}
 });
 
-// display first user sign up form
-const display_authen_from = (err, params) => {
-	let params_out = {};
-	if(params.doc_count === 0) {
+// display sign up form for first user if there is no user or else display the user sign in form
+const display_startup_from = (err, params) => {
+	let params_out;
+	const user_count = params.doc.doc_count;
+	delete params.doc;
+	if(user_count === 0) {
 		params_out = {
 			authen: false,
 			page: "signup",
-			title: "First User Sign Up",
 			host: helper.hostname,
-			header_msg: "There are no user in the system. Create the first user to proceed. The created user will have the Admin privilege.",
-			first_user: true
+			title: "First Admin Sign Up",
+			header_msg: "There are no admin user in the system. Create the first admin to proceed.",
+			first_admin: true,
+			authen_model: authen_model
 		};
 	} else {
 		params_out = {
 			authen: false,
 			page: "signin",
-			title: "User Sign In",
 			host: helper.hostname,
-			header_msg: "Please signin to proceed"
+			title: "User Sign In",
+			header_msg: "Please sign in to proceed"
 		};
 	}
 	params.res.render('index', params_out);		
 };
 
+// create duplicate email error message
+const duplicate_email_error = (err, params, callback) => {
+	const email_count = params.doc.doc_count;
+	delete params.doc;
+	if(email_count > 0) {
+		// the email alreay exists
+		params.error_condition = true;
+		params.error_msg = ["Email id already exists."];
+		params.stop = true;
+		callback(err, err, params);
+	} else {
+		// there is no error, continue to next step
+		callback(err, err, params);
+	}
+};
+
 // response after creating new user
 const new_user_response = (err, params) => {
 	helper.error_handler(err);
-	params.error_form = 'signup';
-	params.error_msg = ["Email id already exists."];
-	send_error_or_log_uer(err, params);
+
+	if ( params.error_condition !== undefined && params.error_condition === true ) {
+		send_back_authen_errors (null, {res: params.res, form: 'signup', errors: params.error_msg, form_data: params.form_data});
+	} else {
+		const user_info =params.doc.doc_info;
+		log_user_session ( null, { req: params.req, user_id: user_info._id } );
+		params.res.redirect("/");
+	}
 };
 
 // send error message if error else log in the user
@@ -189,7 +238,7 @@ const send_error_or_log_uer = (err, params) => {
 	const res = params.res;
 
 	if ( params.error_condition !== undefined && params.error_condition === true ) {
-		send_back_authen_errors (null, {res, form: params.error_form, errors: params.error_msg, user_email: params.form_data.user_email});
+		send_back_authen_errors (null, {res, form: params.form, errors: params.error_msg, form_data: params.form_data});
 	} else {
 		log_user_session ( null, { req: params.req, user_id: params.doc.doc_info._id } );
 		res.redirect("/");
@@ -198,19 +247,36 @@ const send_error_or_log_uer = (err, params) => {
 
 // send the authentication error messages
 const send_back_authen_errors = (err, params) => {
-	const res = params.res;
-
 	const params_out = {
-		res,
-		page: 'authen',
-		title: "Mileage Manager",
+		res: params.res,
+		authen: false,
+		page: params.form,
 		host: helper.hostname,
-		header_msg: "Please sign in to proceed",
 		form: params.form,
 		errors: params.errors,
-		user_email: params.user_email
+		user_email: params.form_data.user_email
 	};
-	res.render('index', params_out);
+
+	if(params.form === "signup") {
+		params_out.user_role = params.form_data.user_role;
+		if(authen_model === 2) {
+			params_out.authen_model = authen_model;
+		}
+
+		if(params.form_data.first_admin === "true") {
+			params_out.title = "First Admin Sign Up";
+			params_out.header_msg = "There are no admin user in the system. Create the first admin to proceed.";
+			params_out.first_admin = true;
+		} else {
+			params_out.title = "User Sign Up";
+			params_out.header_msg = "Please fill the form to sign up";
+		}
+	} else {
+		params_out.title = "User Sign In";
+		params_out.header_msg = "Please sign in to proceed";
+	}
+
+	params.res.render('index', params_out);
 };
 
 // send the forgot password error messages

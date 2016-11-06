@@ -7,8 +7,11 @@ const hmodels = {};
 hmodels.error_handler = (err, params, callback) => {
 	if(err) { return callback(err);}
 	else {
-		if ( params.async_callback === true ) {
-			delete params.async_callback;
+		if ( params.async_level !== undefined && params.async_level > 0 ) {
+			params.async_level -= 1;
+			if(params.async_level === 0) {
+				delete params.async_level;
+			}
 			callback(err, err, params);
 		} else {
 			callback(null, params);	
@@ -18,21 +21,17 @@ hmodels.error_handler = (err, params, callback) => {
 
 // count the number of models
 hmodels.count_doc = (err, params, callback) => {
-	const model = params.model;
-	model.count(params.condition, (err, doc_count) => {
-		params.doc_count = doc_count;
+	params.doc.model.count(params.doc.condition, (err, doc_count) => {
+		params.doc.doc_count = doc_count;
 		hmodels.error_handler(err, params, callback);
 	});
 };
 
 // save document
 hmodels.save_doc = (err, params, callback) => {
-	const model = params.model;
-	const doc_data = params.form_data;
-	const new_instance = new model(doc_data);
+	const new_instance = new params.doc.model(params.doc.form_data);
 	new_instance.save((err, doc_info) => {
-		params.doc = {};
-		params.doc.doc_info = doc_info;
+		params.doc.doc_info = doc_info._doc;
 		hmodels.error_handler(err, params, callback);
 	});
 };
