@@ -49,7 +49,7 @@ authen_router.post("/signup", (req, res) => {
 	if(validate_errors.length === 0) {
 		// for returning to correct parameter in async callback
 		// this parameter is used in hmodels.error_handler method
-		params.async_level = 1;
+		params.async_level = 2;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},	
 				muser.check_email_exist,
@@ -64,7 +64,7 @@ authen_router.post("/signup", (req, res) => {
 
 // route for "authen/signin", user sign in
 authen_router.post("/signin", (req, res) => {
-	const form_data = {user_email : helper.sanitize_data({data: req.body.signin_email}), password : helper.sanitize_data({data: req.body.signin_password})};
+	const form_data = {user_email : helper.sanitize_data({data: req.body.signin_email}), password : helper.sanitize_data({data: req.body.signin_password, no_trim: true})};
 	const params = {res, req, form_data};
 
 	const validate_errors = validate_login(null, {user_email: form_data.user_email, password: form_data.password});
@@ -95,6 +95,7 @@ authen_router.route("/forgot_password")
 		authen: false,
 		page: "forgot_password",
 		host: helper.hostname,
+		title: "Forgot Password",
 		header_msg: "Reset Password"
 	};
 	res.render("index", params);
@@ -107,10 +108,21 @@ authen_router.route("/forgot_password")
 	const validate_errors = validate_forgot_password(null, {user_email: form_data.user_email});
 
 	if(validate_errors.length === 0) {
+		// host and env variables are used in method send_forgot_pasword_email for creating reset link
+		params.host = helper.hostname;
+		params.env = helper.confg.env;
+
+		// for returning to correct parameter in async callback
+		// this parameter is used in hmodels.error_handler method
+		params.async_level = 4;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},
 				muser.check_email_exist,
-			], forgot_password_email_check_response
+				email_check_error_report,
+				muser.generate_reset_password_link,
+				mpass_reset.password_request_entry,
+				muser.send_forgot_pasword_email
+			], forgot_password_response_message
 		);
 	} else {
 		send_back_forgot_password_errors (null, {res, form: "forgot_password", errors: validate_errors, user_email: form_data.user_email});
@@ -119,55 +131,32 @@ authen_router.route("/forgot_password")
 
 // route for "authen/reset_password/reset_phrase", reset password link
 authen_router.get("/reset_password/:reset_phrase", (req, res) => {
-	const params = { req, res };
+	const params = { req, res, reset_phrase: req.params.reset_phrase };
+
+	// for returning to correct parameter in async callback
+	// this parameter is used in hmodels.error_handler method
+	params.async_level = 3;	
 	helper.async.waterfall([
 			(callback) => {callback(null, null, params);},
-			mpass_reset.reset_link_existence_check
-		], reset_link_existence_check_response
+			mpass_reset.reset_link_existence_check,
+			reset_link_existence_error_report,
+			mpass_reset.reset_link_expiry_check,
+			mpass_reset.expired_link_status_change,
+		], reset_link_validation_response
 	);
 });
 
-// response of reset link existence check
-const reset_link_existence_check_response = (err, params) => {
-	params.pass_reset_info = params.doc.doc_info;
-	delete params.doc;
-
-	let params_out;
-	if ( params.pass_reset_info !== null ) {
-		// valid reset link
-		params_out = {
-			authen: false,
-			page: "forgot_password",
-			host: helper.hostname,
-			header_msg: "Reset Password",
-			form: 'reset_password'
-			, reset_link: params.req.params.reset_phrase
-		};
-	} else {
-		// invalid reset link
-		params_out = {
-			authen: false,
-			page: "message",
-			title: "Mileage Manager",
-			host: helper.hostname,
-			header_msg: "Reset Password",
-			message: ["The reset link is not correct. Please repeat the Forgot Password process once again."]
-		};
-	}
-	params.res.render("index", params_out);
-};
-
 // route for "authen/reset_password/", reset password
 authen_router.put('/reset_password', (req, res) => {
-	const form_data = {new_password: helper.sanitize_data({data: req.body.new_password}), retype_password: helper.sanitize_data({data: req.body.retype_password}), reset_phrase: helper.sanitize_data({data: req.body.reset_link})};
+	const form_data = {new_password: helper.sanitize_data({data: req.body.new_password, no_trim: true}), retype_password: helper.sanitize_data({data: req.body.retype_password, no_trim: true}), reset_phrase: helper.sanitize_data({data: req.body.reset_link})};
 	const validate_errors = validate_reset_password(null, form_data);
 
 	if(validate_errors.length === 0) {
-		const params = {res, form_data};
+		const params = {req, res, form_data, reset_phrase: form_data.reset_phrase};
+		params.async_level = 1;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},
-				mpass_reset.reset_link_expiry_check,
-				mpass_reset.expired_link_status_change,
+				mpass_reset.reset_link_existence_check,
 				muser.update_password
 			], reset_password_response
 		);
@@ -203,6 +192,18 @@ const display_startup_from = (err, params) => {
 	params.res.render('index', params_out);		
 };
 
+// response after checking the existence of reset link
+const reset_link_existence_error_report = (err, params, callback) => {
+	const reset_link_info = params.doc.doc_info;
+	delete params.doc;
+	if ( reset_link_info === null ) {
+		// invalid reset link
+		params.reset_message = ["The reset link is not correct. Please repeat the Forgot Password process once again."];
+		params.stop = true;
+	}
+	hmodels.error_handler(err, params, callback);
+};
+
 // create duplicate email error message
 const duplicate_email_error = (err, params, callback) => {
 	const email_count = params.doc.doc_count;
@@ -212,11 +213,8 @@ const duplicate_email_error = (err, params, callback) => {
 		params.error_condition = true;
 		params.error_msg = ["Email id already exists."];
 		params.stop = true;
-		callback(err, err, params);
-	} else {
-		// there is no error, continue to next step
-		callback(err, err, params);
 	}
+	hmodels.error_handler(err, params, callback);
 };
 
 // response after creating new user
@@ -287,8 +285,8 @@ const send_back_forgot_password_errors = (err, params) => {
 		res,
 		authen: false,
 		page: 'forgot_password',
-		title: "Mileage Manager",
 		host: helper.hostname,
+		title: "Forgot Password",
 		header_msg: "Reset Password",
 		form: params.form,
 		errors: params.errors,
@@ -396,44 +394,71 @@ const validate_reset_password = ( err, params ) => {
 	return errors;
 };
 
-// response after checking the email presence for forgot password
-const forgot_password_email_check_response = (err, params) => {
+// response of checking the existence of forgot password email
+const email_check_error_report = (err, params, callback) => {
 	helper.error_handler(err);
-	const user_count = params.doc_count;
-	if (user_count > 0) {
-		params.host = helper.hostname;
-		params.env = helper.confg.env;
-		helper.async.waterfall([
-				(async_callback) => {async_callback(null, null, params);},
-				muser.generate_reset_password_link,
-				mpass_reset.password_request_entry,
-				muser.send_forgot_pasword_email
-			], forgot_password_email_send_msg
-		);
+	const email_count = params.doc.doc_count;
+	delete params.doc;
+
+	if (email_count === 0) {
+		params.stop = true;
+		params.errors = ["Email id not found."];
+	}
+	hmodels.error_handler(err, params, callback);
+};
+
+// response after forgot password process
+const forgot_password_response_message = (err, params) => {
+	helper.error_handler(err);
+
+	if (params.errors !== undefined && params.errors.length > 0) {
+		send_back_forgot_password_errors (err, {res: params.res, form: "forgot_password", errors: params.errors, user_email: params.form_data.user_email});
 	} else {
-		send_back_forgot_password_errors (null, {res: params.res, form: "forgot_password", errors: ["Email id not found."], user_email: params.form_data.user_email});
+		// display message after sending password reset email
+		// for development mode display the reset link too
+		let message;
+		let reset_link_message = "An email has been sent to you. Please check your email and follow the steps to reset the password.";
+		message = [reset_link_message, params.reset_link]; 
+
+		const params_out = {
+			authen: false,
+			page: "message",
+			host: helper.hostname,
+			title: "Forgot Password",
+			header_msg: "Password Reset",
+			message,
+			display_reset_link: params.display_reset_link,
+			reset_link: params.reset_link
+		};
+		params.res.render("index", params_out);
 	}
 };
 
-// display message after sending password reset email
-// for development mode display the reset link too
-const forgot_password_email_send_msg = (err, params) => {
-	helper.error_handler(err);
-
-	// display rest link for development mode
-	let message;
-	let reset_link_message = "An email has been sent to you. Please check your email and follow the steps to reset the password.";
-	message = [reset_link_message, params.reset_link]; 
-
-	const params_out = {
-		page: "authen",
-		host: helper.hostname,
-		header_msg: "Password Reset",
-		forgot_password: "message",
-		message: message, 
-		display_reset_link: params.display_reset_link,
-		reset_link: params.reset_link
-	};
+// response of reset link validity check
+const reset_link_validation_response = (err, params) => {
+	let params_out;
+	if ( params.reset_message === undefined ) {
+		// valid reset link
+		params_out = {
+			authen: false,
+			page: "forgot_password",
+			host: helper.hostname,
+			title: "Forgot Password",
+			header_msg: "Reset Password",
+			form: 'reset_password',
+			reset_link: params.req.params.reset_phrase
+		};
+	} else {
+		// invalid reset link
+		params_out = {
+			authen: false,
+			page: "message",
+			host: helper.hostname,
+			title: "Forgot Password",
+			header_msg: "Reset Password",
+			message: params.reset_message
+		};
+	}
 	params.res.render("index", params_out);
 };
 
@@ -443,8 +468,8 @@ const reset_password_response = (err, params) => {
 		const params_out = {
 			authen: false,
 			page: "message",
-			title: "Mileage Manager",
 			host: helper.hostname,
+			title: "Forgot Password",
 			header_msg: "Reset Password",
 			message: [params.reset_message], 
 		};

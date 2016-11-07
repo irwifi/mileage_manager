@@ -97,47 +97,56 @@ user.get_login_user = (err, params, callback) => {
 
 // generate reset password link
 user.generate_reset_password_link = (err, params, callback) => {
-	const random_number = Math.random().toString() + Math.random().toString() + Math.random().toString() + Math.random().toString(); 
-	const random_phrase = base64.encode(random_number);
-	params.reset_phrase = random_phrase;
-	callback(err, err, params);
+	if(params.stop !== true) {
+		const random_number = Math.random().toString() + Math.random().toString() + Math.random().toString() + Math.random().toString(); 
+		const random_phrase = base64.encode(random_number);
+		params.reset_phrase = random_phrase;
+	}
+
+	hmodels.error_handler(err, params, callback);
 };
 
 // send forgot password email with reset link (only for production mode)
 user.send_forgot_pasword_email = (err, params, callback) => {
-	const reset_link = "http://" + params.host + "/authen/reset_password/" + params.reset_phrase;
-	params.reset_link = reset_link;
+	if(params.stop !== true) {
+		const reset_link = "http://" + params.host + "/authen/reset_password/" + params.reset_phrase;
+		params.reset_link = reset_link;
 
-	if(params.env === "development") {
-		params.display_reset_link = true;
-	} else {
-		/* =============== email sending mechanism =============== */
+		if(params.env === "development") {
+			params.display_reset_link = true;
+		} else {
+			/* =============== email sending mechanism =============== */
+		}
 	}
-
-	callback(err, params);
+	
+	hmodels.error_handler(err, params, callback);
 };
 
 // update the password
 user.update_password = (err, params, callback) => {
-	if ( params.stop === true) {
-		callback(err, params);
-	} else {
-		params.reset_message = "Password has been reset. <a href='/authen/'>Click here</a> to log in.";
+	const reset_link_info = params.doc.doc_info;
+	delete params.doc;
+	if ( reset_link_info !== null ) {
+		params.reset_message = ["Password has been reset. <a href='/authen/'>Click here</a> to log in."];
 
 		if ( params.doc !== undefined ) { delete params.doc; }
 		params.doc = {};
 		params.doc.model = user.user_model;
-		params.doc.condition = { user_email: params.pass_reset_info.user_email };
+		params.doc.condition = { user_email: reset_link_info.user_email };
 
 		params.doc.model.findOne(params.doc.condition, (err, doc) => {
 			doc.password = params.form_data.new_password;
 			doc.save((err, doc_info) => {
-				params.doc_info = doc_info;
+				params.doc.doc_info = doc_info;
 				hmodels.error_handler(err, params, callback);
 			});
 		});
+	} else {
+		// there has been some errors in previous steps
+		params.reset_message = ["There has been some error. Please repeat the Forgot Password process."];
+		hmodels.error_handler(err, params, callback);
 	}
-};
+	};
 
 // create new user
 user.create_new_user = (err, params, callback) => {
