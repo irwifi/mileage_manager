@@ -23,6 +23,7 @@ const hauthen = require('./handlers/hauthen')( { express } );
 const routes = require('./routes/index');
 const authen = require('./routes/authen');
 const users = require('./routes/users');
+const readings = require('./routes/readings');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -54,7 +55,7 @@ const sanitize_data = (params) => {
 app.use(methodOverride((req, res) => {
 	if (req.body && typeof req.body === 'object' && '_method' in req.body) {
 		// look in urlencoded POST bodies and delete it 
-		var method = sanitize_data({data: req.body._method});
+		const method = sanitize_data({data: req.body._method});
 		delete req.body._method;
 		return method;
 	}
@@ -64,11 +65,12 @@ app.use(hauthen);
 app.use('/', routes);
 app.use('/authen', authen);
 app.use('/users', users);
+app.use('/readings', users);
 
 console.log("Application running at http://localhost:3000/ ");
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use((req, res, next) => {
 	const err = new Error('Not Found');
 	err.status = 404;
 	next(err);
@@ -79,7 +81,7 @@ app.use(function(req, res, next) {
 // development error handler
 // will print stacktrace
 if (app.get('env') === 'development') {
-	app.use(function(err, req, res, next) {
+	app.use((err, req, res, next) => {
 		res.status(err.status || 500);
 		res.render('error', {
 			message: err.message,
@@ -90,7 +92,7 @@ if (app.get('env') === 'development') {
 
 // production error handler
 // no stacktraces leaked to user
-app.use(function(err, req, res, next) {
+app.use((err, req, res, next) => {
 	res.status(err.status || 500);
 	res.render('error', {
 		message: err.message,

@@ -416,9 +416,8 @@ const forgot_password_response_message = (err, params) => {
 	} else {
 		// display message after sending password reset email
 		// for development mode display the reset link too
-		let message;
-		let reset_link_message = "An email has been sent to you. Please check your email and follow the steps to reset the password.";
-		message = [reset_link_message, params.reset_link]; 
+		const reset_link_message = "An email has been sent to you. Please check your email and follow the steps to reset the password.";
+		const message = [reset_link_message, params.reset_link]; 
 
 		const params_out = {
 			authen: false,

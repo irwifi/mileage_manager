@@ -97,10 +97,10 @@
 					equalTo: "#signup_password"
 				}
 			},
-			highlight: function(element) {
+			highlight: (element) => {
 				$(element).closest('.control-group').removeClass('success').addClass('error');
 			},
-			success: function(element) {
+			success: (element) => {
 				element
 				.addClass('valid')
 				.closest('.control-group').removeClass('error').addClass('success');
