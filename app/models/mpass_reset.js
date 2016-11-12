@@ -55,7 +55,8 @@ pass_reset.reset_link_expiry_check = (err, params, callback) => {
 	if(params.stop !== true) {
 		params.doc = {};
 		params.doc.model = pass_reset.pass_reset_model;
-		params.doc.condition = { reset_phrase: params.req.params.reset_phrase, $where: () => { return Date.now() - this._id.getTimestamp() < (24 * 60 * 60 * 1000); } };
+		// this.createdAt used instead of this._id.getTimestamp() for making suitable to testing
+		params.doc.condition = { reset_phrase: params.req.params.reset_phrase, $where: function () { return Date.now() - this.createdAt < (24 * 60 * 60 * 1000); } };
 		params.doc.select = {};
 		hmodels.find_one(null, params, callback);
 	} else {

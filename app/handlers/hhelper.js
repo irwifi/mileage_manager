@@ -7,6 +7,7 @@ helper.async = require('async');
 helper.validator = require('validator');
 
 helper.confg = require("../../confg/confg");
+helper.hmodels = require("../handlers/hmodels");
 
 // host name
 helper.hostname = helper.confg.hostname;

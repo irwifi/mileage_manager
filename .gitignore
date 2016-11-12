@@ -3,3 +3,4 @@ node_modules
 /confg/confg_production.js
 /confg/confg_test.js
 /.jshintrc
+coverage
