@@ -14,11 +14,29 @@ chai.use(require('chai-string'));
 // Test for Mileage Manager
 console.log("Test cases running");
 
+// insert data into the document
 const insert_data = (err, params, callback) => {
 	hdb.db.collection(params.doc).insert(params.data, callback);
 };
 
-describe('Mileage Manager Test:', () => {
+// fetch one document from database
+const find_one = (err, params, callback) => {
+	hdb.db.collection(params.doc).findOne(params.condition, params.select, callback);
+};
+
+// expect object
+const expect_object = (err, params) => {
+	expect(params.obj).to.be.an('object');
+	for(const item in params.obj_items) {
+		if( Array.isArray(params.obj_items[item]) === true ) {
+			expect(params.obj).to.have.property(params.obj_items[item][0], params.obj_items[item][1]);
+		} else {
+			expect(params.obj).to.have.property(params.obj_items[item]);
+		}
+	}
+}
+
+describe('User Authentication Tests:', () => {
 	// this block runs only once before everything else within this test
 	before((done) => {
 		async.series([
@@ -126,7 +144,7 @@ describe('Mileage Manager Test:', () => {
 
 	// Sign up functionality
 	describe('Sign up functionality:', () => {
-		it('Sign up without any input', (done) => {
+		it('Sign up submit without any input', (done) => {
 			request(app)
 			.post('/authen/signup')
 			.send({ signup_email: '', signup_password: '', signup_retype_password: '', user_role: '', first_admin: ''})
@@ -142,23 +160,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Sign up without any input', (done) => {
-			request(app)
-			.post('/authen/signup')
-			.send({ signup_email: '', signup_password: '', signup_retype_password: '', user_role: '', first_admin: ''})
-			.expect(200)
-			.end((err, res) => {
-				if (err) return done(err);
-				expect(res.text).to.containIgnoreSpaces('<form id="form_signup"');
-				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signin"');
-				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
-				expect(res.text).to.containIgnoreSpaces('Please enter email id.');
-				expect(res.text).to.containIgnoreSpaces('Please enter password.');
-				done();
-			});
-		});
-
-		it('Sign up with invalid email and password less than 6 characters', (done) => {
+		it('Sign up submit with invalid email and password less than 6 characters', (done) => {
 			request(app)
 			.post('/authen/signup')
 			.send({ signup_email: 'invalid_email', signup_password: '12345', signup_retype_password: '', user_role: '', first_admin: ''})
@@ -177,7 +179,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Sign up with duplicate email', (done) => {
+		it('Sign up submit with duplicate email', (done) => {
 			async.series([
 				(async_callback) => {
 					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'123456', user_role: 'admin'}}, async_callback);
@@ -204,22 +206,29 @@ describe('Mileage Manager Test:', () => {
 			], done);
 		});
 
-		it('Sign up with valid data', (done) => {
+		it('Sign up submit with valid data', (done) => {
 			request(app)
 			.post('/authen/signup')
 			.send({ signup_email: 'abc@sample.com', signup_password: '123456', signup_retype_password: '123456', user_role: 'admin', first_admin: ''})
 			.expect(302)
 			.end((err, res) => {
 				if (err) return done(err);
-				expect(res.headers).to.have.property('location');
-				done();
+				async.waterfall([
+					(async_callback) => {async_callback(null, null, {doc: "users", condition: {}, select: {}});},
+						find_one
+					], (err, user_info) => {
+						expect(res.headers).to.have.property('location');
+						expect_object(null, {obj: user_info, obj_items: [['user_email', 'abc@sample.com'], 'password', ['user_role', 'admin']]});
+						done();
+					}
+				);
 			});
 		});
 	});
 
 	// Sign in functionality
 	describe('Sign in functionality:', () => {
-		it('Sign in without any input', (done) => {
+		it('Sign in submit without any input', (done) => {
 			request(app)
 			.post('/authen/signin')
 			.send({ signin_email: '', signin_password: ''})
@@ -235,7 +244,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Sign in with invalid email and password less than 6 characters', (done) => {
+		it('Sign in submit with invalid email and password less than 6 characters', (done) => {
 			request(app)
 			.post('/authen/signin')
 			.send({ signin_email: 'invalid_email', signin_password: '12345'})
@@ -253,7 +262,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Sign in with unregistered email', (done) => {
+		it('Sign in submit with unregistered email', (done) => {
 			request(app)
 			.post('/authen/signin')
 			.send({ signin_email: 'valid@email.com', signin_password: '123456'})
@@ -272,7 +281,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Sign in with correct email but incorrect password', (done) => {
+		it('Sign in submit with correct email but incorrect password', (done) => {
 			async.series([
 				(async_callback) => {
 					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'123456', user_role: 'admin'}}, async_callback);
@@ -299,7 +308,7 @@ describe('Mileage Manager Test:', () => {
 			], done);
 		});
 
-		it('Sign in with correct email and password', (done) => {
+		it('Sign in submit with correct email and password', (done) => {
 			async.series([
 				(async_callback) => {
 					muser.create_new_user(null, {form_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
@@ -333,7 +342,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Forgot password without input', (done) => {
+		it('Forgot password submit without input', (done) => {
 			request(app)
 			.post('/authen/forgot_password')
 			.send({ forgot_email: '' })
@@ -347,7 +356,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Forgot password with invalid email', (done) => {
+		it('Forgot password submit with invalid email', (done) => {
 			request(app)
 			.post('/authen/forgot_password')
 			.send({ forgot_email: 'invalid_email' })
@@ -361,7 +370,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Forgot password with incorrect email', (done) => {
+		it('Forgot password submit with unregistered email', (done) => {
 			request(app)
 			.post('/authen/forgot_password')
 			.send({ forgot_email: 'invalid@email.com' })
@@ -375,7 +384,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Forgot password with correct email', (done) => {
+		it('Forgot password submit with correct email', (done) => {
 			async.series([
 				(async_callback) => {
 					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'123456', user_role: 'admin'}}, async_callback);
@@ -387,9 +396,16 @@ describe('Mileage Manager Test:', () => {
 					.expect(200)
 					.end((err, res) => {
 						if (err) return done(err);
-						expect(res.text).to.not.containIgnoreSpaces('<form id="form_forgot_password"');
-						expect(res.text).to.containIgnoreSpaces('Please check your email and follow the steps to reset the password.');
-						done();
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "pass_resets", condition: {}, select: {}});},
+								find_one
+							], (err, pass_reset_info) => {
+								expect(res.text).to.not.containIgnoreSpaces('<form id="form_forgot_password"');
+								expect(res.text).to.containIgnoreSpaces('Please check your email and follow the steps to reset the password.');
+								expect_object(null, {obj: pass_reset_info, obj_items: [['user_email', 'abc@sample.com'], 'reset_phrase', ['status', 1]]});
+								done();
+							}
+						);						
 					});
 				}
 			], done);
@@ -413,6 +429,7 @@ describe('Mileage Manager Test:', () => {
 		it('Reset password with expired reset link', (done) => {
 			async.series([
 				(async_callback) => {
+					// insert test pass_resets record with createdAt time stamp of 24 hours earlier time
 					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', createdAt: new Date(new Date()-1000 * 24 * 60 * 60)}}, async_callback);
 				},
 				(async_callback) => {
@@ -421,18 +438,26 @@ describe('Mileage Manager Test:', () => {
 					.expect(200)
 					.end((err, res) => {
 						if (err) return done(err);
-						 expect(res.text).to.containIgnoreSpaces('The reset link has expired');
-						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
-						done();
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "pass_resets", condition: {}, select: {}});},
+								find_one
+							], (err, pass_resets_info) => {
+								expect(res.text).to.containIgnoreSpaces('The reset link has expired');
+								expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+								expect_object(null, {obj: pass_resets_info, obj_items: [['user_email', 'abc@sample.com'], ['reset_phrase', 'reset_phrase'], ['status', 3]]});
+								done();
+							}
+						);
 					});
 				}
 			], done);
 		});
 
-		it('Reset password with valid reset link', (done) => {
+		// status: 2 - used, 3 - expired
+		it('Reset password with status 2', (done) => {
 			async.series([
 				(async_callback) => {
-					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', createdAt: new Date(new Date())}}, async_callback);
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', status: 2}}, async_callback);
 				},
 				(async_callback) => {
 					request(app)
@@ -440,14 +465,34 @@ describe('Mileage Manager Test:', () => {
 					.expect(200)
 					.end((err, res) => {
 						if (err) return done(err);
-						expect(res.text).to.containIgnoreSpaces('<form id="form_reset_password"');
+						expect(res.text).to.containIgnoreSpaces('The reset link has already been used to reset the password once');
+						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
 						done();
 					});
 				}
 			], done);
 		});
 
-		it('Reset password without any input', (done) => {
+		it('Reset password with status 3', (done) => {
+			async.series([
+				(async_callback) => {
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', status: 3}}, async_callback);
+				},
+				(async_callback) => {
+					request(app)
+					.get('/authen/reset_password/reset_phrase')
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('The reset link has expired.');
+						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+						done();
+					});
+				}
+			], done);
+		});
+
+		it('Reset password submit without any input', (done) => {
 			request(app)
 			.put('/authen/reset_password')
 			.send({ new_password: '', retype_password: '', reset_link: '' })
@@ -461,7 +506,7 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Reset password with password less than 6 characters', (done) => {
+		it('Reset password submit with password less than 6 characters', (done) => {
 			request(app)
 			.put('/authen/reset_password')
 			.send({ new_password: '12345', retype_password: '', reset_link: '' })
@@ -476,13 +521,96 @@ describe('Mileage Manager Test:', () => {
 			});
 		});
 
-		it('Reset password with valid password and retype password', (done) => {
+		it('Reset password submit with tampered invalid reset link', (done) => {
+			request(app)
+			.put('/authen/reset_password')
+			.send({ new_password: '123456', retype_password: '123456', reset_link: 'invalid_reset_link' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('The reset link is not correct.');
+				expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+				done();
+			});
+		});
+
+		it('Reset password submit with tampered expired reset link', (done) => {
 			async.series([
 				(async_callback) => {
-					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'123456', user_role: 'admin'}}, async_callback);
+					// insert test pass_resets record with createdAt time stamp of 24 hours earlier time
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', createdAt: new Date(new Date()-1000 * 24 * 60 * 60), status: 1}}, async_callback);
+				},
+				(async_callback) => {
+					request(app)
+					.put('/authen/reset_password')
+					.send({ new_password: '123456', retype_password: '123456', reset_link: 'reset_phrase' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "pass_resets", condition: {}, select: {}});},
+								find_one
+							], (err, pass_resets_info) => {
+								expect(res.text).to.containIgnoreSpaces('The reset link has expired');
+								expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+								expect_object(null, {obj: pass_resets_info, obj_items: [['user_email', 'abc@sample.com'], ['reset_phrase', 'reset_phrase'], ['status', 3]]});
+								done();
+							}
+						);
+					});
+				}
+			], done);
+		});
+		
+		it('Reset password submit with tampered reset link having status 2', (done) => {
+			async.series([
+				(async_callback) => {
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', status: 2}}, async_callback);
+				},
+				(async_callback) => {
+					request(app)
+					.put('/authen/reset_password')
+					.send({ new_password: '123456', retype_password: '123456', reset_link: 'reset_phrase' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('The reset link has already been used to reset the password once');
+						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+						done();
+					});
+				}
+			], done);
+		});
+
+		it('Reset password submit with tampered reset link having status 3', (done) => {
+			async.series([
+				(async_callback) => {
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', status: 3}}, async_callback);
+				},
+				(async_callback) => {
+					request(app)
+					.put('/authen/reset_password')
+					.send({ new_password: '123456', retype_password: '123456', reset_link: 'reset_phrase' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('The reset link has expired');
+						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+						done();
+					});
+				}
+			], done);
+		});
+
+		it('Reset password submit with valid password and retype password', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert user for test
+					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'345678', user_role: 'admin'}}, async_callback);
 				},				
 				(async_callback) => {
-					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase'}}, async_callback);
+					// insert pass_reset for test
+					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', createdAt: new Date()}}, async_callback);
 				},
 				(async_callback) => {			
 					request(app)
@@ -491,9 +619,20 @@ describe('Mileage Manager Test:', () => {
 					.expect(200)
 					.end((err, res) => {
 						if (err) return done(err);
-						expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
-						expect(res.text).to.containIgnoreSpaces('Password has been reset.');
-						done();
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "users", condition: {}, select: {}});},
+								find_one,
+								(user_info, async_callback) => {
+									expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
+									expect(res.text).to.containIgnoreSpaces('Password has been reset.');
+									expect_object(null, {obj: user_info, obj_items: [['user_email', 'abc@sample.com']]});
+									muser.compare_password(null, {password: '123456', hash: user_info.password}, async_callback);
+								}
+							], (err, is_match) => {
+								expect(is_match).to.equal(true);
+								done();
+							}
+						);
 					});
 				}
 			], done);

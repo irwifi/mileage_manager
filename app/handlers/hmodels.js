@@ -5,7 +5,7 @@ const hmodels = {};
 
 // error handler 
 hmodels.error_handler = (err, params, callback) => {
-	if(err) { return callback(err);}
+	if(err) { return callback(err); }
 	else {
 		if ( params.async_level !== undefined && params.async_level > 0 ) {
 			params.async_level -= 1;
@@ -14,7 +14,7 @@ hmodels.error_handler = (err, params, callback) => {
 			}
 			callback(err, err, params);
 		} else {
-			callback(null, params);	
+			callback(null, params);
 		}
 	}
 };

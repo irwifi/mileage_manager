@@ -1,6 +1,5 @@
 "use strict";
 const helper = require("../handlers/hhelper");
-const hmodels = require("../handlers/hmodels");
 const muser = require("../models/musers");
 const mpass_reset = require("../models/mpass_reset");
 
@@ -51,7 +50,7 @@ authen_router.post("/signup", (req, res) => {
 		// this parameter is used in hmodels.error_handler method
 		params.async_level = 2;
 		helper.async.waterfall([
-				(callback) => {callback(null, null, params);},	
+				(async_callback) => {async_callback(null, null, params);},
 				muser.check_email_exist,
 				duplicate_email_error,
 				muser.create_new_user
@@ -71,9 +70,12 @@ authen_router.post("/signin", (req, res) => {
 
 	if(validate_errors.length === 0) {
 		params.form = 'signin';
+		params.async_level = 2;
 		helper.async.waterfall([
 				(async_callback) => {async_callback(null, null, params);},
-				muser.authenticate_login,
+				muser.get_user_info,
+				user_check_error_report,
+				muser.compare_user_password
 			], send_error_or_log_uer
 		);
 	} else {
@@ -135,13 +137,14 @@ authen_router.get("/reset_password/:reset_phrase", (req, res) => {
 
 	// for returning to correct parameter in async callback
 	// this parameter is used in hmodels.error_handler method
-	params.async_level = 3;	
+	params.async_level = 4;	
 	helper.async.waterfall([
 			(callback) => {callback(null, null, params);},
 			mpass_reset.reset_link_existence_check,
 			reset_link_existence_error_report,
 			mpass_reset.reset_link_expiry_check,
 			mpass_reset.expired_link_status_change,
+			reset_link_expiry_error_report
 		], reset_link_validation_response
 	);
 });
@@ -153,11 +156,17 @@ authen_router.put('/reset_password', (req, res) => {
 
 	if(validate_errors.length === 0) {
 		const params = {req, res, form_data, reset_phrase: form_data.reset_phrase};
-		params.async_level = 1;
+		params.async_level = 7;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},
 				mpass_reset.reset_link_existence_check,
-				muser.update_password
+				reset_link_existence_error_report,
+				mpass_reset.reset_link_expiry_check,
+				mpass_reset.expired_link_status_change,
+				reset_link_expiry_error_report,
+				muser.update_password,
+				mpass_reset.reset_link_status_change,
+				password_change_report
 			], reset_password_response
 		);
 	} else {
@@ -165,12 +174,31 @@ authen_router.put('/reset_password', (req, res) => {
 	}
 });
 
+// check if user exists
+const user_check_error_report = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "get_user_info") {
+		params.user_info = params.doc.doc_info;
+		delete params.doc;
+	}
+	
+	if ( params.user_info !== undefined && params.user_info === null ) {
+		params.error_condition = true;
+		params.error_msg = ["User name / Email not found."];
+		err = params;
+	}
+	helper.hmodels.error_handler(err, params, callback);
+};
+
 // display sign up form for first user if there is no user or else display the user sign in form
 const display_startup_from = (err, params) => {
+	let user_count;
+	if(params.doc !== undefined && params.doc.name === "admin_exist_check") {
+		user_count = params.doc.doc_count;
+		delete params.doc;
+	}
+
 	let params_out;
-	const user_count = params.doc.doc_count;
-	delete params.doc;
-	if(user_count === 0) {
+	if(user_count !== undefined && user_count === 0) {
 		params_out = {
 			authen: false,
 			page: "signup",
@@ -194,53 +222,97 @@ const display_startup_from = (err, params) => {
 
 // response after checking the existence of reset link
 const reset_link_existence_error_report = (err, params, callback) => {
-	const reset_link_info = params.doc.doc_info;
-	delete params.doc;
-	if ( reset_link_info === null ) {
+	if(params.doc !== undefined && params.doc.name === "reset_link_existence_check") {
+		params.reset_link_info = params.doc.doc_info;
+		delete params.doc;
+	}
+
+	if ( params.reset_link_info !== undefined && params.reset_link_info === null ) {
 		// invalid reset link
 		params.reset_message = ["The reset link is not correct. Please repeat the Forgot Password process once again."];
-		params.stop = true;
+	} else if(params.reset_link_info.status === 2) {
+		// reset link already used
+		params.reset_message = ["The reset link has already been used to reset the password once. Please repeat the Forgot Password process once again."];
+	} else if(params.reset_link_info.status === 3) {
+		// reset link expired
+		params.reset_message = ["The reset link has expired. Please repeat the Forgot Password process once again."];
 	}
-	hmodels.error_handler(err, params, callback);
+
+	if(params.reset_message !== undefined) {
+		err = params;
+	}
+	helper.hmodels.error_handler(err, params, callback);
+};
+
+// response after checking and updating the status of expiry of reset link
+const reset_link_expiry_error_report = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "expired_link_status_change") {
+		params.status_change_info = params.doc.update_info;
+		delete params.status_change_doc;
+
+		params.reset_message = ["The reset link has expired. Please repeat the Forgot Password process once again."];
+		err = params;
+	}
+	helper.hmodels.error_handler(err, params, callback);
+};
+
+// response after resetting password and changing status
+const password_change_report = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "reset_link_status_change") {
+		delete params.doc;
+		params.reset_message = ["Password has been reset. <a href='/authen/'>Click here</a> to log in."];
+	}
+	helper.hmodels.error_handler(err, params, callback);
 };
 
 // create duplicate email error message
 const duplicate_email_error = (err, params, callback) => {
-	const email_count = params.doc.doc_count;
-	delete params.doc;
-	if(email_count > 0) {
-		// the email alreay exists
-		params.error_condition = true;
-		params.error_msg = ["Email id already exists."];
-		params.stop = true;
+	let email_count;
+	if(params.doc !== undefined && params.doc.name === "check_email_exist") {
+		email_count = params.doc.doc_count;
+		delete params.doc;
 	}
-	hmodels.error_handler(err, params, callback);
+	if(email_count !== undefined && email_count > 0) {
+		// the email alreay exists
+		params.error_msg = ["Email id already exists."];
+		err = params;
+	}
+	helper.hmodels.error_handler(err, params, callback);
 };
 
 // response after creating new user
 const new_user_response = (err, params) => {
-	helper.error_handler(err);
-
-	if ( params.error_condition !== undefined && params.error_condition === true ) {
+	if ( err !== null ) {
+		params = err;
 		send_back_authen_errors (null, {res: params.res, form: 'signup', errors: params.error_msg, form_data: params.form_data});
 	} else {
-		const user_info =params.doc.doc_info;
-		log_user_session ( null, { req: params.req, user_id: user_info._id } );
+		let user_info;
+		if(params.doc !== undefined && params.doc.name === "create_new_user") {
+			user_info =params.doc.doc_info;
+			delete params.doc;
+			log_user_session ( null, { req: params.req, user_id: user_info._id } );
+		}
 		params.res.redirect("/");
 	}
 };
 
 // send error message if error else log in the user
 const send_error_or_log_uer = (err, params) => {
-	helper.error_handler(err);
-	const res = params.res;
+	if ( err !== null ) {
+		params = err;
+	} else {
+		if ( params.is_match === false ) {
+			params.error_condition = true;
+			params.error_msg = ["Password does not match."];
+		} else {
+			log_user_session ( null, { req: params.req, user_id: params.user_info._id } );
+			params.res.redirect("/");
+		}
+	}
 
 	if ( params.error_condition !== undefined && params.error_condition === true ) {
-		send_back_authen_errors (null, {res, form: params.form, errors: params.error_msg, form_data: params.form_data});
-	} else {
-		log_user_session ( null, { req: params.req, user_id: params.doc.doc_info._id } );
-		res.redirect("/");
-	}
+		send_back_authen_errors (null, {res: params.res, form: params.form, errors: params.error_msg, form_data: params.form_data});
+	} 
 };
 
 // send the authentication error messages
@@ -396,23 +468,21 @@ const validate_reset_password = ( err, params ) => {
 
 // response of checking the existence of forgot password email
 const email_check_error_report = (err, params, callback) => {
-	helper.error_handler(err);
 	const email_count = params.doc.doc_count;
 	delete params.doc;
 
 	if (email_count === 0) {
-		params.stop = true;
 		params.errors = ["Email id not found."];
+		err = params;
 	}
-	hmodels.error_handler(err, params, callback);
+	helper.hmodels.error_handler(err, params, callback);
 };
 
 // response after forgot password process
 const forgot_password_response_message = (err, params) => {
-	helper.error_handler(err);
-
-	if (params.errors !== undefined && params.errors.length > 0) {
-		send_back_forgot_password_errors (err, {res: params.res, form: "forgot_password", errors: params.errors, user_email: params.form_data.user_email});
+	if (err !== null) {
+		params = err;
+		send_back_forgot_password_errors (null, {res: params.res, form: "forgot_password", errors: params.errors, user_email: params.form_data.user_email});
 	} else {
 		// display message after sending password reset email
 		// for development mode display the reset link too
@@ -436,7 +506,18 @@ const forgot_password_response_message = (err, params) => {
 // response of reset link validity check
 const reset_link_validation_response = (err, params) => {
 	let params_out;
-	if ( params.reset_message === undefined ) {
+	if(err !== null) {
+		params = err;
+		// invalid reset link
+		params_out = {
+			authen: false,
+			page: "message",
+			host: helper.hostname,
+			title: "Forgot Password",
+			header_msg: "Reset Password",
+			message: params.reset_message
+		};
+	} else {
 		// valid reset link
 		params_out = {
 			authen: false,
@@ -447,33 +528,24 @@ const reset_link_validation_response = (err, params) => {
 			form: 'reset_password',
 			reset_link: params.req.params.reset_phrase
 		};
-	} else {
-		// invalid reset link
-		params_out = {
-			authen: false,
-			page: "message",
-			host: helper.hostname,
-			title: "Forgot Password",
-			header_msg: "Reset Password",
-			message: params.reset_message
-		};
 	}
 	params.res.render("index", params_out);
 };
 
 // response of resetting the password
 const reset_password_response = (err, params) => {
-	if ( params.reset_message !== undefined ) {
-		const params_out = {
-			authen: false,
-			page: "message",
-			host: helper.hostname,
-			title: "Forgot Password",
-			header_msg: "Reset Password",
-			message: [params.reset_message], 
-		};
-		params.res.render("index", params_out);
+	if ( err !== null ) {
+		params = err;
 	}
+	const params_out = {
+		authen: false,
+		page: "message",
+		host: helper.hostname,
+		title: "Forgot Password",
+		header_msg: "Reset Password",
+		message: params.reset_message, 
+	};
+	params.res.render("index", params_out);
 };
 
 module.exports = authen_router;
