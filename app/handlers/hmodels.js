@@ -3,6 +3,30 @@ const mongoose = require('mongoose');
 
 const hmodels = {};
 
+// count the number of models
+hmodels.count_doc = (err, params, callback) => {
+	params.doc.model.count(params.doc.condition, (err, doc_count) => {
+		params.doc.doc_count = doc_count;
+		hmodels.error_handler(err, params, callback);
+	});
+};
+
+// create document 
+hmodels.create_doc = (err, params, callback) => {
+	params.doc.model.create(params.doc.form_data, (err, doc_info) => {
+		params.doc.doc_info = doc_info;
+		hmodels.error_handler(err, params, callback);
+	});
+};
+
+// fetch distinct doc
+hmodels.distinct_doc = (err, params, callback) => {
+	params.doc.model.distinct(params.doc.select, params.doc.condition, (err, doc_info) => {
+		params.doc.doc_info = doc_info;
+		hmodels.error_handler(err, params, callback);
+	});
+};
+
 // error handler 
 hmodels.error_handler = (err, params, callback) => {
 	if(err) { return callback(err); }
@@ -19,23 +43,6 @@ hmodels.error_handler = (err, params, callback) => {
 	}
 };
 
-// count the number of models
-hmodels.count_doc = (err, params, callback) => {
-	params.doc.model.count(params.doc.condition, (err, doc_count) => {
-		params.doc.doc_count = doc_count;
-		hmodels.error_handler(err, params, callback);
-	});
-};
-
-// save document
-hmodels.save_doc = (err, params, callback) => {
-	const new_instance = new params.doc.model(params.doc.form_data);
-	new_instance.save((err, doc_info) => {
-		params.doc.doc_info = doc_info._doc;
-		hmodels.error_handler(err, params, callback);
-	});
-};
-
 // find one document
 hmodels.find_one = (err, params, callback) => {
 	if ( params.doc.select === undefined ) {
@@ -49,18 +56,27 @@ hmodels.find_one = (err, params, callback) => {
 	}).select(params.doc.select);
 };
 
-// update document
-hmodels.update_doc = (err, params, callback) => {
-	params.doc.model.update(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, update_info) => {
-		params.doc.update_info = update_info;
+// find one and update
+hmodels.find_one_and_update = (err, params, callback) => {
+	params.doc.model.findOneAndUpdate(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, doc_info) => {
+		params.doc.doc_info = doc_info;
+		hmodels.error_handler(err, params, callback);
+	});
+};
+
+// save document
+hmodels.save_doc = (err, params, callback) => {
+	const new_instance = new params.doc.model(params.doc.form_data);
+	new_instance.save((err, doc_info) => {
+		params.doc.doc_info = doc_info._doc;
 		hmodels.error_handler(err, params, callback);
 	});
 };
 
 // update document
-hmodels.find_one_and_update = (err, params, callback) => {
-	params.doc.model.findOneAndUpdate(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, doc_info) => {
-		params.doc.doc_info = doc_info;
+hmodels.update_doc = (err, params, callback) => {
+	params.doc.model.update(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, update_info) => {
+		params.doc.update_info = update_info;
 		hmodels.error_handler(err, params, callback);
 	});
 };

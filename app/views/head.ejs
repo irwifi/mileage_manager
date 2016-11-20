@@ -4,7 +4,7 @@
 	<head>
 		<meta charset='utf-8' />
 		<title>
-			<% if( typeof title !== 'undefined') {%>
+			<% if( typeof title !== 'undefined' && title !== 'hide_title') {%>
 				<%= title %>
 			<% } else { %>
 				Mileage Manager
@@ -17,8 +17,10 @@
 		<link rel="stylesheet" href="http://<%= host %>/stylesheets/bootstrap.min.css">
 		<link rel="stylesheet" href="http://<%= host %>/stylesheets/style.css">
 		<link rel="stylesheet" href="http://<%= host %>/css/jquery-validation.css">
+		<link rel="stylesheet" href="http://<%= host %>/css/bootstrap-datepicker.min.css">
 
 		<script src="http://<%= host %>/jquery.min.js"></script>
 		<script src="http://<%= host %>/js/bootstrap.min.js"></script>
 		<script src="http://<%= host %>/jquery.validate.js"></script>
+		<script src="http://<%= host %>/js/bootstrap-datepicker.min.js"></script>
 	</head>

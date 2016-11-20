@@ -12,13 +12,6 @@ helper.hmodels = require("../handlers/hmodels");
 // host name
 helper.hostname = helper.confg.hostname;
 
-// error handler
-helper.error_handler = (err) => {
-	if (err) {
-		return console.log(err);
-	}
-};
-
 // sanitize input data
 helper.sanitize_data = (params) => {
 	const raw_data = params.data;
@@ -29,4 +22,10 @@ helper.sanitize_data = (params) => {
 	return cooked_data;
 };
 
+// push individual error messages to error list
+helper.push_error = ( params ) => {
+	if ( params.error !== undefined ) {
+		params.errors.push(params.error);
+	}
+};
 module.exports = helper;

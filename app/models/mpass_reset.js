@@ -1,6 +1,5 @@
 "use strict";
 const mongoose = require('mongoose');
-const async = require('async');
 
 const hmodels = require("../handlers/hmodels");
 const musers = require("../models/musers");
@@ -20,20 +19,14 @@ const pass_reset = {};
 // Define users model
 pass_reset.pass_reset_model = mongoose.model('pass_reset', pass_resetSchema);
 
-// error handler
-const error_handler = (err, callback) => {
-	if(err) { 
-		return callback(err);
-	}
-};
-
 // make password request entry in database
 // save user_email, generated_phrase, status and time stamp
 pass_reset.password_request_entry = (err, params, callback) => {
-	const doc_data = {user_email: params.form_data.user_email, reset_phrase: params.reset_phrase, status: 1};
-	pass_reset.pass_reset_model.create(doc_data, (err, reset_detail) => {
-		hmodels.error_handler(err, params, callback);
-	});	
+	params.doc = {};
+	params.doc.name = "password_request_entry";
+	params.doc.model = pass_reset.pass_reset_model;
+	params.doc.form_data = {user_email: params.form_data.user_email, reset_phrase: params.reset_phrase, status: 1};
+	hmodels.create_doc(err, params, callback);
 };
 
 // check the existence of reset link

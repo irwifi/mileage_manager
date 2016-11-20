@@ -11,9 +11,6 @@ const muser = require("../../app/models/musers");
 
 chai.use(require('chai-string'));
 
-// Test for Mileage Manager
-console.log("Test cases running");
-
 // insert data into the document
 const insert_data = (err, params, callback) => {
 	hdb.db.collection(params.doc).insert(params.data, callback);
@@ -94,17 +91,6 @@ describe('User Authentication Tests:', () => {
 				done();
 			});
 		});
-
-		// it('Landing page after authentication', (done) => {
-		// 	request(app)
-		// 	.get('/')
-		// 	.expect(200)
-		// 	.end((err, res) => {
-		// 		if (err) return done(err);
-		// 		// expect(res.text).to.containIgnoreSpaces('signout');
-		// 		done();
-		// 	});
-		// });
 	});
 
 	// Authentication page response
@@ -218,6 +204,7 @@ describe('User Authentication Tests:', () => {
 						find_one
 					], (err, user_info) => {
 						expect(res.headers).to.have.property('location');
+						expect(res.headers.location).to.equal('/');
 						expect_object(null, {obj: user_info, obj_items: [['user_email', 'abc@sample.com'], 'password', ['user_role', 'admin']]});
 						done();
 					}
@@ -321,7 +308,7 @@ describe('User Authentication Tests:', () => {
 					.end((err, res) => {
 						if (err) return done(err);
 						expect(res.headers).to.have.property('location');
-						// expect(res.headers.location).to.equal('/');
+						expect(res.headers.location).to.equal('/');
 						done();
 					});
 				}

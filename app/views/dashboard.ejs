@@ -1,0 +1,160 @@
+<!-- <!DOCTYPE html> -->
+<section id = "readings_entry_section" class = "readings_entry_section">
+	<div class="container">
+		<div class="page-header">
+			<h3> Enter the fuel and odometer readings </h3>
+		</div>
+		<form id = "form_readings" method = "post" action = "/readings/">
+			<div class="row grid-divider">
+				<div class="col-sm-4">
+					<div class="col-padding">
+						<h3>Date</h3>
+						<div class='input-group date' id='datetimepicker1' >
+							<input type='text' class="form-control"  readonly="" name = "travel_date" id = "travel_date" placeholder="Date" />
+							<span class="input-group-addon">
+							<span class="glyphicon glyphicon-calendar"></span>
+							</span>
+						</div>
+
+						<h3>Odometer Readings</h3>
+						<input type="text" class="form-control" name="odo_readings" id="odo_readings" placeholder="Odometer Readings" 
+						<% if( typeof odo_readings !== 'undefined') { %> value = "<%= odo_readings %>" <% } %> />
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="col-padding">
+						<h3>Fuel Added</h3>
+						<input type="text" class="form-control" name="fuel_added" id="fuel_added" placeholder="Fuel Added" 
+						<% if( typeof fuel_added !== 'undefined') { %> value = "<%= fuel_added %>" <% } %> />
+
+						<h3>Fuel Readings</h3>
+						<input type="text" class="form-control" name="fuel_readings" id="fuel_readings" placeholder="Fuel Readings" 
+						<% if( typeof fuel_readings !== 'undefined') { %> value = "<%= fuel_readings %>" <% } %> />
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="col-padding">
+						<h3>Destination</h3>
+						<div class = "old_destination_block">
+							<select class="form-control" name="destination" id="destination" >
+							<% if(typeof destination_list !== 'undefined') {
+								for(let address in destination_list) { %>
+									<option value = '<%= destination_list[address] %>'><%= destination_list[address] %></option>
+								<% } 
+							} %>
+							</select>
+							<span class = "new_destination_link"> + Add New Destination </span>
+						</div>
+						<div class="new_destination_block">
+							<input type="text" class="form-control" name="new_destination" id="new_destination" placeholder="New Destination" />
+							<span id="new_destination_save"> SAVE </span>
+							<span id="new_destination_cancel"> CANCEL </span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<% if(typeof errors !== 'undefined') { %>
+				<div class="alert alert-danger top_margin_10">
+					<% for(let msg in errors) { %>
+						<%= errors[msg] %>
+						<br />
+					<% } %>
+				</div>
+			<% }%>
+
+			<div class="offset-sm-8 col-sm-12">
+				<button type="submit" class="btn btn-primary btn-lg pull-right"> Enter Readings </button>
+			</div>
+		</form>
+	</div>
+</section>
+
+<section id = "chart_section" class = "chart_section">
+	<div class="container">
+		<h3>Numbers in Chart</h3>
+		mileage, km, fuel, drive vs time
+	</div>
+</section>
+
+<section id = "readings_list_section" class = "list_section">
+	<div class="container">
+	</div>
+</section>
+
+<script>
+	$(() => {
+		if( $("div").find(".alert-danger").length === 0) {
+			$(':input','#form_readings')
+			.not(':button, :submit, :reset, :hidden')
+			.val('')
+			.removeAttr('checked')
+			.removeAttr('selected');
+		}
+
+		$('#datetimepicker1').datepicker({
+     			orientation: 'auto bottom',
+			autoclose : true,
+			todayHighlight : true,
+			endDate: "current" 
+		});
+ 
+		$('#form_readings1').validate({
+			rules: {
+				travel_date: {
+					required: true,
+					date: true
+				},
+				 odo_readings: {
+					required: true,
+					maxlength:6,
+					number: true
+				},
+				fuel_added: {
+					maxlength:2,
+					number: true
+				},
+				fuel_readings: {
+					required: true,
+					maxlength:2,
+					number: true
+				},
+				destination: {
+					required: true
+				}
+			},
+			highlight: (element) => {
+				$(element).closest('.control-group').removeClass('success').addClass('error');
+			},
+			success: (element) => {
+				element
+				.addClass('valid')
+				.closest('.control-group').removeClass('error').addClass('success');
+			}
+		});
+
+		$(".new_destination_link").on('click', function() {
+			$("#new_destination").val("");
+			$(".old_destination_block").hide();
+			$(".new_destination_block").show();
+		});
+
+		$("#new_destination_cancel").on('click', function() {
+			$(".old_destination_block").show();
+			$(".new_destination_block").hide();
+		});
+
+		$("#new_destination_save").on('click', function() {
+			if($("#new_destination").val() !== "") {
+				if($('#destination').find('option[value='+$("#new_destination").val()+']').length === 0) {
+					$('#destination').append($('<option>', {value: $("#new_destination").val(), text:$("#new_destination").val(), selected:'selected'}));
+				} else {
+					$('#destination').val($("#new_destination").val());
+				}
+			}
+
+			$(".old_destination_block").show();
+			$(".new_destination_block").hide();
+		});
+	}); 
+</script>

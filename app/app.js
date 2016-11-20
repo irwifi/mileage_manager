@@ -36,6 +36,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname.replace("app", "") + '/node_modules/bootstrap-datepicker/dist/')); 
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/bootstrap/dist/')); // redirect bootstrap js and css files
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/jquery/dist')); // redirect JS jQuery
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/jquery-validation/dist')); // redirect jquery-validation
@@ -65,7 +66,7 @@ app.use(hauthen);
 app.use('/', routes);
 app.use('/authen', authen);
 app.use('/users', users);
-app.use('/readings', users);
+app.use('/readings', readings);
 
 console.log("Application running at http://localhost:3000/ ");
 

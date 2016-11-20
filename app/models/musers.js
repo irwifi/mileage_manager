@@ -1,7 +1,6 @@
 "use strict";
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const async = require('async');
 
 const hmodels = require("../handlers/hmodels");
 const base64 = require("../../node_modules/js-base64/base64").Base64;
@@ -53,13 +52,6 @@ const user = {};
 
 // Define users model
 user.user_model = mongoose.model('users', userSchema);
-
-// error handler
-const error_handler = (err, callback) => {
-	if(err) { 
-		return callback(err);
-	}
-};
 
 // check if user exists
 user.admin_exist_check = (err, params, callback) => {

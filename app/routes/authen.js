@@ -248,7 +248,7 @@ const reset_link_existence_error_report = (err, params, callback) => {
 const reset_link_expiry_error_report = (err, params, callback) => {
 	if(params.doc !== undefined && params.doc.name === "expired_link_status_change") {
 		params.status_change_info = params.doc.update_info;
-		delete params.status_change_doc;
+		delete params.doc;
 
 		params.reset_message = ["The reset link has expired. Please repeat the Forgot Password process once again."];
 		err = params;
@@ -290,7 +290,7 @@ const new_user_response = (err, params) => {
 		if(params.doc !== undefined && params.doc.name === "create_new_user") {
 			user_info =params.doc.doc_info;
 			delete params.doc;
-			log_user_session ( null, { req: params.req, user_id: user_info._id } );
+			log_user_session ( null, { req: params.req, user_info } );
 		}
 		params.res.redirect("/");
 	}
@@ -305,7 +305,7 @@ const send_error_or_log_uer = (err, params) => {
 			params.error_condition = true;
 			params.error_msg = ["Password does not match."];
 		} else {
-			log_user_session ( null, { req: params.req, user_id: params.user_info._id } );
+			log_user_session ( null, { req: params.req, user_info: params.user_info } );
 			params.res.redirect("/");
 		}
 	}
@@ -382,14 +382,7 @@ const validate_email = ( err, params ) => {
 		error = "Email id too long.";
 	}
 
-	push_error ( null, { error, errors: params.errors } );
-};
-
-// push individual error messages to error list
-const push_error = ( err, params ) => {
-	if ( params.error !== undefined ) {
-		params.errors.push(params.error);
-	}
+	helper.push_error ( { error, errors: params.errors } );
 };
 
 // validate password
@@ -406,7 +399,7 @@ const validate_password = ( err, params ) => {
 		error = "Password too long.";
 	}
 
-	push_error ( null, { error, errors: params.errors } );
+	helper.push_error ( { error, errors: params.errors } );
 };
 
 // validate the retype password
@@ -417,13 +410,15 @@ const validate_retype_password = ( err, params ) => {
 		error = "Retype password does not match.";
 	}
 
-	push_error ( null, { error, errors: params.errors } );
+	helper.push_error ( { error, errors: params.errors } );
 };
 
 // login the user: add user id to the authentication session
 const log_user_session = (err, params) => {
 	const req = params.req;
-	req.authen.user_id = params.user_id;
+	req.authen.user_id = params.user_info._id;
+	req.authen.user_name = params.user_info.username;
+	req.authen.user_email = params.user_info.user_email;
 };
 
 // validate user signup form

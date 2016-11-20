@@ -1,10 +1,10 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+ 	padding: 50px 0;
+ 	font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
 a {
-  color: #00B7FF;
+ 	color: #00B7FF;
 }
 
 /* logo */
@@ -24,21 +24,121 @@ a {
 	font-size: 24px;
 }
 
+/* add 10px margin at the top of the element */
+.top_margin_10 {
+	margin-top: 10px;
+}
+
 /* add 10px margin at the bottom of the element */
 .bottom_margin_10 {
 	margin-bottom: 10px;
 }
 
-/* 30px horizontal padding */
+/* 40px horizontal padding */
 .hoz_padding_40 {
 	padding: 0 40px;
 }
 
 /* highlight the crete admin checkbox */
  .create_admin_checkbox {
- 	background-color: #FAE63F;
- 	font-weight: bold;
- 	font-size: 16px;
- 	color: #0764FD;
- 	padding: 5px;
+	background-color: #FAE63F;
+	font-weight: bold;
+	font-size: 16px;
+	color: #0764FD;
+	padding: 5px;
  }
+
+/* dashboard readings entry form >>>> */
+ .grid-divider {
+	position: relative;
+	padding: 0;
+}
+.grid-divider>[class*='col-'] {
+	position: static;
+}
+.grid-divider>[class*='col-']:nth-child(n+2):before {
+	content: "";
+	border-left: 1px solid #DDD;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+}
+.col-padding {
+	padding: 0 15px;
+}
+/* <<<< dashboard readings entry form */
+
+/* readings entry section >>>> */
+.readings_entry_section {
+	padding-top: 362px;
+	padding-bottom: 60px;
+	background-image: url("../images/fuel.jpg");
+	/*background-size: 1100px 260px;*/
+	background-repeat: no-repeat;
+	background-color: #52B348;
+	background-position: right top; 
+}
+
+.readings_entry_section h3 {
+	color: #FFFFFF;
+}
+
+.readings_entry_section button {
+	/*font-weight: bold;*/
+	font-size: 20px;
+	margin-top: 40px;
+	width: 320px;
+}
+
+.readings_entry_section .error {
+	color: #A51C1C;
+}
+
+.readings_entry_section .new_destination_link {
+	float: right;
+	color: #FFF;
+	font-size: 15px;
+	margin-top: 8px;
+	margin-right: 5px;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.readings_entry_section .new_destination_block {
+	display: none;
+	text-align: right;
+}
+
+.readings_entry_section .new_destination_block span {
+	color: #FFF;
+	display: inline-block;
+	margin: 8px 4px;
+	margin-right: 0;
+	padding: 10px 12px;
+	font-size: 15px;
+	font-weight: bold;
+}
+
+.readings_entry_section .new_destination_block span:hover {
+	background-color: #3BA540;
+}
+/* <<<< readings entry section */
+
+/* chart section */
+.chart_section {
+	margin-top: 60px;
+	padding-top: 400px;
+	background-image: url("../images/chart.jpg");
+	background-repeat: no-repeat;
+	background-position: center top; 
+}
+
+
+/* list_section */
+.list_section {
+	margin-top:20px;
+	padding-top: 200px;
+	background-image: url("../images/data.jpg");
+	background-repeat: no-repeat;
+	background-position: center top; 
+}

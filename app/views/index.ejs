@@ -7,18 +7,22 @@
 		<%# including the page header %>
 		<%- include('header') -%>
 
-		<div class="container">
-			<!-- <- include('nav_path') -%> -->
-				<% if(typeof message !== 'undefined' )  {%>
-					<% for(msg in message) {%>
-						<p><%- message[msg] %></p>
-					<% } %>					
-				<% } else { %>
-					<%- include(page) -%>
-				<% } %>
-		</div>
+		<!-- <- include('nav_path') -%> -->
+		<% if(typeof message !== 'undefined' )  {%>
+			<% for(msg in message) {%>
+				<p><%- message[msg] %></p>
+			<% } %>					
+		<% } else { %>
+			<%- include(page) -%>
+		<% } %>
 	</body>
 </html>
+
+<% if(typeof jump !== 'undefined' && jump === 'readings_list_section')  {%>
+	<script>
+		window.location.hash = '#readings_list_section';
+	</script>
+<% } %>
 
 <script>
 	const redirect_form = (method, location, params) => {
