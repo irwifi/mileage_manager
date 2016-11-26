@@ -14,12 +14,12 @@
 			<a class="navbar-brand" href="/">Mileage Manager</a>
 		</div>
 
-		<% if (page !== "authen" && !(typeof authen !== 'undefined' && authen === false)) { %>						
+		<% if (!(typeof authen !== 'undefined' && authen === false)) { %>
 			<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
 				<ul class="nav navbar-nav">
-					<li><a href="#readings_entry_section">Home <span class="sr-only">(current)</span></a></li>
-					<li><a href="#chart_section">Chart</a></li>
-					<li><a href="#readings_list_section">Data</a></li>
+					<li><a href="/#readings_entry_section">Home <span class="sr-only">(current)</span></a></li>
+					<li><a href="/#chart_section">Chart</a></li>
+					<li><a href="/#readings_list_section">Data</a></li>
 					<li><a href="/readings/statistics">Statistics</a></li>
 				</ul>
 
@@ -34,8 +34,8 @@
 					<li class="dropdown">
 						<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"> <%= user_name %> <span class="caret"></span></a>
 						<ul class="dropdown-menu" role="menu">
-							<li><a href="authen/change_password">Change Password</a></li>
-							<li><a href="settings">Settings</a></li>
+							<li><a href="/authen/change_password">Change Password</a></li>
+							<li><a href="/settings">Settings</a></li>
 							<li class="divider"></li>
 							<li><a href="/authen/signout"> Sign Out </a></li>
 						</ul>

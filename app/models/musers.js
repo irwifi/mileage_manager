@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const hmodels = require("../handlers/hmodels");
 const base64 = require("../../node_modules/js-base64/base64").Base64;
 
+// mongoose.set('debug', true);
+
 // Define user schema
 const userSchema = new mongoose.Schema(
 	{
@@ -67,16 +69,33 @@ user.check_email_exist = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "check_email_exist";
 	params.doc.model = user.user_model;
-	params.doc.condition = { "user_email": params.form_data.user_email };
+	params.doc.condition = { "user_email": params.doc_data.user_email };
 	hmodels.count_doc(null, params, callback);
 };
 
-// fetch user info
-user.get_user_info = (err, params, callback) => {
+// compare passwore
+user.compare_password = function (err, params, callback) {
+	bcrypt.compare(params.password, params.hash, function(err, isMatch) {
+		callback(null, isMatch);
+	});
+};
+
+// compare user password
+user.compare_user_password = (err, params, callback) => {
 	params.doc = {};
-	params.doc.name = "get_user_info";
+	params.user_info.comparePassword(params.doc_data.password, function(err, isMatch) {
+		params.doc.name = "compare_user_password";
+		params.doc.is_match = isMatch;
+		hmodels.error_handler(err, params, callback);
+	});
+};
+
+// fetch user info
+user.user_info_fetch = (err, params, callback) => {
+	params.doc = {};
+	params.doc.name = "user_info_fetch";
 	params.doc.model = user.user_model;
-	params.doc.condition = { user_email: params.form_data.user_email };
+	params.doc.condition = { user_email: params.doc_data.user_email };
 	hmodels.find_one(null, params, callback);
 };
 
@@ -106,14 +125,10 @@ user.update_password = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "update_password";
 	params.doc.model = user.user_model;
-	params.doc.condition = { user_email: params.reset_link_info.user_email };
-
-	params.doc.model.findOne(params.doc.condition, (err, doc) => {
-		doc.password = params.form_data.new_password;
-		doc.save((err, doc_info) => {
-			params.doc.doc_info = doc_info;
-			hmodels.error_handler(err, params, callback);
-		});
+	params.user_info.password = params.doc_data.new_password;
+	params.user_info.save((err, doc_info) => {
+		params.doc.doc_info = doc_info;
+		hmodels.error_handler(err, params, callback);
 	});
 };
 
@@ -124,27 +139,12 @@ user.create_new_user = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "create_new_user";
 	params.doc.model = user.user_model;
-	params.doc.form_data = {username: params.form_data.user_email, user_email: params.form_data.user_email, password: params.form_data.password};
-	if(params.form_data.user_role !== undefined) {
-		params.doc.form_data.user_role = params.form_data.user_role;	
+	params.doc.doc_data = {username: params.doc_data.user_email, user_email: params.doc_data.user_email, password: params.doc_data.password};
+	if(params.doc_data.user_role !== undefined) {
+		params.doc.doc_data.user_role = params.doc_data.user_role;	
 	}
 	
 	hmodels.save_doc(null, params, callback);	
-};
-
-// compare user password
-user.compare_user_password = (err, params, callback) => {
-	params.user_info.comparePassword(params.form_data.password, function(err, isMatch) {
-		params.is_match = isMatch;
-		hmodels.error_handler(err, params, callback);
-	});
-};
-
-// compare passwore
-user.compare_password = function (err, params, callback) {
-	bcrypt.compare(params.password, params.hash, function(err, isMatch) {
-		callback(null, isMatch);
-	});
 };
 
 module.exports = user;

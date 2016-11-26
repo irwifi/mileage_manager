@@ -23,6 +23,7 @@ const hauthen = require('./handlers/hauthen')( { express } );
 const routes = require('./routes/index');
 const authen = require('./routes/authen');
 const users = require('./routes/users');
+const settings = require('./routes/settings');
 const readings = require('./routes/readings');
 
 // view engine setup
@@ -66,6 +67,7 @@ app.use(hauthen);
 app.use('/', routes);
 app.use('/authen', authen);
 app.use('/users', users);
+app.use('/settings', settings);
 app.use('/readings', readings);
 
 console.log("Application running at http://localhost:3000/ ");

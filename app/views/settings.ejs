@@ -1,0 +1,81 @@
+<!-- <!DOCTYPE html> -->
+<div class="container">
+	<div class = "col-md-6 hoz_padding_40">
+		<h3 class = "text-center"> Settings </h3>
+
+		<p> </p>
+
+		<% if( typeof success !== 'undefined' ) { %>
+			<div class="alert alert-success">
+				Settings have been updated.
+			</div>
+		<% }%>
+
+		<form id="form_settings" method = "post" action = "/settings">
+			<div class="form-group row">
+				<label for="km_mile" class="col-sm-4 col-form-label"> KM or Mile </label>
+				<div class="col-sm-8">
+					<label class="radio-inline"><input type="radio" name="km_mile" value = "km"
+					<% if(typeof km_mile !== 'undefined' && km_mile === 'km') { %>
+						checked = "checked"
+					<% } %>
+					 >Kilometer, KM</label>
+					<label class="radio-inline"><input type="radio" name="km_mile" value = "mile"
+					<% if(typeof km_mile !== 'undefined' && km_mile === 'mile') { %>
+						checked = "checked"
+					<% } %>
+					>Mile</label>
+				</div>
+			</div>
+
+			<div class="form-group row">
+				<label for="max_fuel_capacity" class="col-sm-4 col-form-label"> Maximum Fuel Capacity </label>
+				<div class="col-sm-8">
+					<input type="text" class="form-control" name="max_fuel_capacity" id="max_fuel_capacity" placeholder="Maximum Fuel Capacity"
+					<% if(typeof max_fuel_capacity !== 'undefined') { %>
+						value = "<%= max_fuel_capacity %>"
+					<% } %>
+					 />
+				</div>
+			</div>
+
+			<% if( typeof errors !== 'undefined' ) { %>
+				<div class="alert alert-danger">
+					<% for(let msg in errors) { %>
+						<%= errors[msg] %>
+						<br />
+					<% } %>
+				</div>
+			<% }%>
+
+			<div class="form-group row">
+				<div class="col-sm-10">
+					<input type="hidden" name = "_method" value = "PUT" />
+					<button type="submit" class="btn btn-primary"> Update Settings </button>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	<script>
+		$(() => {
+			$('#form_settings').validate({
+				rules: {
+					max_fuel_capacity: {
+						required: true,
+						number: true,
+						maxlength: 2
+					}
+				},
+				highlight: (element) => {
+					$(element).closest('.control-group').removeClass('success').addClass('error');
+				},
+				success: (element) => {
+					element
+					.addClass('valid')
+					.closest('.control-group').removeClass('error').addClass('success');
+				}
+			});
+		});
+	</script>
+</div>

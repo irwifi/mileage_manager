@@ -52,6 +52,12 @@ describe('Mileage Manager Tests:', () => {
 				hdb.connect(null, {}, async_callback);
 			},
 			(async_callback) => {
+				hdb.db.createCollection('settings', 
+					(err, result) => {
+						async_callback(err);
+					}
+				);
+			},			(async_callback) => {
 				hdb.db.createCollection('readings', 
 					(err, result) => {
 						async_callback(err);
@@ -73,7 +79,7 @@ describe('Mileage Manager Tests:', () => {
 				);
 			},
 			(async_callback) => {				
-				muser.create_new_user(null, {form_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
+				muser.create_new_user(null, {doc_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
 			},
 			(async_callback) => {
 				logged_app
@@ -96,6 +102,13 @@ describe('Mileage Manager Tests:', () => {
 						async_callback(err);
 					}
 				);
+			},
+			(async_callback) => {
+				hdb.db.collection('settings').remove(
+					(err, result) => {
+						async_callback(err);
+					}
+				);
 			}
 		], done);
 	});
@@ -114,34 +127,131 @@ describe('Mileage Manager Tests:', () => {
 			});
 		});
 
-		it('Dashboard response:', (done) => {
+		it('Dashboard response', (done) => {
 			logged_app
 			.get('/readings')
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.containIgnoreSpaces('abc@sample.com');
-				expect(res.text).to.containIgnoreSpaces('<a href="#readings_entry_section">Home');
-				expect(res.text).to.containIgnoreSpaces('<a href="#chart_section">Chart');
-				expect(res.text).to.containIgnoreSpaces('<a href="#readings_list_section">Data');
-				expect(res.text).to.containIgnoreSpaces('<a href="/readings/statistics">Statistics');
-				expect(res.text).to.containIgnoreSpaces('<a href="authen/change_password">Change Password</a>');
-				expect(res.text).to.containIgnoreSpaces('<a href="settings">Settings</a>');
 				expect(res.text).to.containIgnoreSpaces('<a href="/authen/signout"> Sign Out </a>');
-				expect(res.text).to.containIgnoreSpaces('Enter the fuel and odometer readings');
 				expect(res.text).to.containIgnoreSpaces('id="form_readings"');
-				expect(res.text).to.containIgnoreSpaces('id="travel_date"');
-				expect(res.text).to.containIgnoreSpaces('id="odo_readings"');
-				expect(res.text).to.containIgnoreSpaces('id="fuel_added"');
-				expect(res.text).to.containIgnoreSpaces('id="fuel_readings"');
-				expect(res.text).to.containIgnoreSpaces('id="destination"');
-				expect(res.text).to.containIgnoreSpaces('id="new_destination"');
 				expect(res.text).to.containIgnoreSpaces('');
 				done();
 			});
 		});
+	});
 
-		it('Travel Info submit without any data:', (done) => {
+	// Settings functionality
+	describe('Settings functionality:', () => {
+		it('Settings response:', (done) => {
+			logged_app
+			.get('/settings')
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.containIgnoreSpaces('navbar-right');
+				expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+				done();
+			});
+		});
+
+		it('Settings submit without any data', (done) => {
+			logged_app
+			.put('/settings')
+			.send({ km_mile: '', max_fuel_capacity: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
+				expect(res.text).to.containIgnoreSpaces('Please select Kilometer or Mile');
+				expect(res.text).to.containIgnoreSpaces('Please enter maximum fuelcapacity');
+				done();
+			});
+		});
+
+		it('Settings submit with invalid data', (done) => {
+			logged_app
+			.put('/settings')
+			.send({ km_mile: '123', max_fuel_capacity: 'invalid' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
+				expect(res.text).to.containIgnoreSpaces('Please enter valid Km/Mile value');
+				expect(res.text).to.containIgnoreSpaces('Please enter valid maximum fuel capacity');
+				done();
+			});
+		});
+
+		it('Settings submit with max_fuel_capacity less than 1', (done) => {
+			logged_app
+			.put('/settings')
+			.send({ km_mile: 'km', max_fuel_capacity: '-1' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
+				expect(res.text).to.containIgnoreSpaces('Please enter valid maximum fuel capacity');
+				done();
+			});
+		});
+
+		it('Settings submit with exceeding values (km_mile exceeding 4 digits and max_fuel_capacity exceeding 2 digits)', (done) => {
+			logged_app
+			.put('/settings')
+			.send({ km_mile: 'invalid', max_fuel_capacity: '100' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
+				expect(res.text).to.containIgnoreSpaces('Please enter valid Km/Mile value');
+				expect(res.text).to.containIgnoreSpaces('Please enter valid maximum fuel capacity');
+				done();
+			});
+		});
+
+		it('Settings submit with valid data', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert settings for test
+					insert_data(null, {doc: 'settings', data: {km_mile: 'mile', max_fuel_capacity: 15}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.put('/settings')
+					.send({ km_mile: 'km', max_fuel_capacity: '18' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "settings", condition: {}, select: {}});},
+								find_one
+							], (err, settings_info) => {
+								expect(res.text).to.containIgnoreSpaces('id="form_settings"');
+								expect(res.text).to.not.containIgnoreSpaces('<div class="alert alert-danger');
+								expect(res.text).to.containIgnoreSpaces('<div class="alert alert-success');
+								expect(res.text).to.containIgnoreSpaces('Settings have been updated');
+								expect_object(null, {obj: settings_info, obj_items: [['km_mile', 'km'], ['max_fuel_capacity', 18]]});
+								done();
+							}
+						);
+					});
+				}
+			], done);
+		});
+	});
+
+	// Travel Info entry functionality
+	describe('Travel Info entry functionality:', () => {
+		it('Travel Info submit without any data', (done) => {
 			logged_app
 			.post('/readings')
 			.send({ travel_date: '', odo_readings: '', fuel_added: '', fuel_readings: '', destination: '' })
@@ -175,6 +285,8 @@ describe('Mileage Manager Tests:', () => {
 			});
 		});
 
+		//check for lower values too
+
 		// get maximum capacity value
 		it('Travel Info submit with exceeding values (date exceeding today, odometer readings exceeding 6 digits, fuel added and readings exceeding maximum capacity and desination name logner than 50 characters):', (done) => {
 			logged_app
@@ -195,7 +307,7 @@ describe('Mileage Manager Tests:', () => {
 		});
 
 		// repetitive data means readings already exists with same km_readings value
-		it('Travel Info submit with repetitive data:', (done) => {
+		it('Travel Info submit with repetitive data', (done) => {
 			async.series([
 				(async_callback) => {
 					// insert test readings record
@@ -216,7 +328,7 @@ describe('Mileage Manager Tests:', () => {
 			], done);
 		});
 
-		it('Travel Info submit with valid data:', (done) => {
+		it('Travel Info submit with valid data', (done) => {
 			logged_app
 			.post('/readings')
 			.send({ travel_date: date_from_today(0), odo_readings: '5555', fuel_added: '10', fuel_readings: '15', destination: 'Kathmandu' })

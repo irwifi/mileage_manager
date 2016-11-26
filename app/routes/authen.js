@@ -14,6 +14,7 @@ const authen_model =  2;
 authen_router.get('/', (req, res) => {
 	if(authen_model === 1) {
 		const params = {
+			authen: false,
 			page: "authen",
 			host: helper.hostname,
 			title: 'User Authentication',
@@ -31,23 +32,25 @@ authen_router.get('/', (req, res) => {
 
 // route for "authen/signup", user sign up 
 authen_router.post("/signup", (req, res) => {
-	const form_data = {};
-	form_data.user_email = helper.sanitize_data({data: req.body.signup_email});
-	form_data.password = helper.sanitize_data({data: req.body.signup_password, no_trim: true});
-	form_data.retype_password = helper.sanitize_data({data: req.body.signup_retype_password, no_trim: true});
+	const params = {res, req};
+	params.form_data = {};
+	params.form_data.user_email = helper.sanitize_data({data: req.body.signup_email});
+	params.form_data.password = helper.sanitize_data({data: req.body.signup_password, no_trim: true});
+	params.form_data.retype_password = helper.sanitize_data({data: req.body.signup_retype_password, no_trim: true});
 
 	if(authen_model === 2) {
-		form_data.user_role = helper.sanitize_data({data: req.body.user_role});
-		form_data.first_admin = helper.sanitize_data({data: req.body.first_admin});
+		params.form_data.user_role = helper.sanitize_data({data: req.body.user_role});
+		params.form_data.first_admin = helper.sanitize_data({data: req.body.first_admin});
 	}
 
-	const params = {res, req, form_data};
-
-	const validate_errors = validate_new_user(null, {user_email: form_data.user_email, password: form_data.password, retype_password: form_data.retype_password});
+	const validate_errors = validate_new_user(null, params.form_data);
 
 	if(validate_errors.length === 0) {
-		// for returning to correct parameter in async callback
-		// this parameter is used in hmodels.error_handler method
+		params.doc_data = {};
+		params.doc_data.user_email = params.form_data.user_email;
+		params.doc_data.password = params.form_data.password;
+		params.doc_data.user_role = params.form_data.user_role;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
 		params.async_level = 2;
 		helper.async.waterfall([
 				(async_callback) => {async_callback(null, null, params);},
@@ -57,29 +60,34 @@ authen_router.post("/signup", (req, res) => {
 			], new_user_response
 		);
 	} else {
-		send_back_authen_errors (null, {res, form: "signup", errors: validate_errors, form_data});
+		send_back_authen_errors (null, {res, form: "signup", errors: validate_errors, form_data: params.form_data});
 	}
 });
 
 // route for "authen/signin", user sign in
 authen_router.post("/signin", (req, res) => {
-	const form_data = {user_email : helper.sanitize_data({data: req.body.signin_email}), password : helper.sanitize_data({data: req.body.signin_password, no_trim: true})};
-	const params = {res, req, form_data};
+	const params = {res, req};
+	params.form_data = {
+		user_email : helper.sanitize_data({data: req.body.signin_email}), 
+		password : helper.sanitize_data({data: req.body.signin_password, no_trim: true})
+	};
 
-	const validate_errors = validate_login(null, {user_email: form_data.user_email, password: form_data.password});
+	const validate_errors = validate_login(null, params.form_data);
 
 	if(validate_errors.length === 0) {
 		params.form = 'signin';
+		params.doc_data = params.form_data;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
 		params.async_level = 2;
 		helper.async.waterfall([
 				(async_callback) => {async_callback(null, null, params);},
-				muser.get_user_info,
+				muser.user_info_fetch,
 				user_check_error_report,
 				muser.compare_user_password
 			], send_error_or_log_uer
 		);
 	} else {
-		send_back_authen_errors (null, {res, form: "signin", errors: validate_errors, form_data});
+		send_back_authen_errors (null, {res, form: "signin", errors: validate_errors, form_data: params.form_data});
 	}
 });
 
@@ -91,7 +99,7 @@ authen_router.get("/signout", (req, res) => {
 
 // route for "authen/forgot_password"
 authen_router.route("/forgot_password")
-// get route : display the forgot password form
+// get route: display the forgot password form
 .get((req, res) => {
 	const params = {
 		authen: false,
@@ -102,20 +110,19 @@ authen_router.route("/forgot_password")
 	};
 	res.render("index", params);
 })
-// post route : send password change request
+// post route: send password change request
 .post((req, res) => {
-	const form_data = {user_email: helper.sanitize_data({data: req.body.forgot_email})};
-	const params = {res, req, form_data};
+	const params = {res, req};
+	params.form_data = {user_email: helper.sanitize_data({data: req.body.forgot_email})};
 
-	const validate_errors = validate_forgot_password(null, {user_email: form_data.user_email});
+	const validate_errors = validate_forgot_password(null, params.form_data);
 
 	if(validate_errors.length === 0) {
 		// host and env variables are used in method send_forgot_pasword_email for creating reset link
 		params.host = helper.hostname;
 		params.env = helper.confg.env;
-
-		// for returning to correct parameter in async callback
-		// this parameter is used in hmodels.error_handler method
+		params.doc_data = params.form_data;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
 		params.async_level = 4;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},
@@ -127,7 +134,7 @@ authen_router.route("/forgot_password")
 			], forgot_password_response_message
 		);
 	} else {
-		send_back_forgot_password_errors (null, {res, form: "forgot_password", errors: validate_errors, user_email: form_data.user_email});
+		send_back_forgot_password_errors (null, {res, form: "forgot_password", errors: validate_errors, form_data: params.form_data});
 	}
 });
 
@@ -135,8 +142,7 @@ authen_router.route("/forgot_password")
 authen_router.get("/reset_password/:reset_phrase", (req, res) => {
 	const params = { req, res, reset_phrase: req.params.reset_phrase };
 
-	// for returning to correct parameter in async callback
-	// this parameter is used in hmodels.error_handler method
+	// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
 	params.async_level = 4;	
 	helper.async.waterfall([
 			(callback) => {callback(null, null, params);},
@@ -151,12 +157,18 @@ authen_router.get("/reset_password/:reset_phrase", (req, res) => {
 
 // route for "authen/reset_password/", reset password
 authen_router.put('/reset_password', (req, res) => {
-	const form_data = {new_password: helper.sanitize_data({data: req.body.new_password, no_trim: true}), retype_password: helper.sanitize_data({data: req.body.retype_password, no_trim: true}), reset_phrase: helper.sanitize_data({data: req.body.reset_link})};
-	const validate_errors = validate_reset_password(null, form_data);
+	const params = {req, res};
+	params.form_data = {
+		new_password: helper.sanitize_data({data: req.body.new_password, no_trim: true}), 
+		retype_password: helper.sanitize_data({data: req.body.retype_password, no_trim: true}), 
+		reset_phrase: helper.sanitize_data({data: req.body.reset_link})};
+	const validate_errors = validate_reset_password(null, params.form_data);
 
 	if(validate_errors.length === 0) {
-		const params = {req, res, form_data, reset_phrase: form_data.reset_phrase};
-		params.async_level = 7;
+		params.doc_data = params.form_data;
+		params.reset_phrase = params.form_data.reset_phrase;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
+		params.async_level = 9;
 		helper.async.waterfall([
 				(callback) => {callback(null, null, params);},
 				mpass_reset.reset_link_existence_check,
@@ -164,28 +176,87 @@ authen_router.put('/reset_password', (req, res) => {
 				mpass_reset.reset_link_expiry_check,
 				mpass_reset.expired_link_status_change,
 				reset_link_expiry_error_report,
+				muser.user_info_fetch,
+				user_check_error_report,
 				muser.update_password,
 				mpass_reset.reset_link_status_change,
 				password_change_report
 			], reset_password_response
 		);
 	} else {
-		send_back_forgot_password_errors (null, {res, form: "reset_password", errors: validate_errors, reset_link: helper.sanitize_data({data: req.body.reset_link})});
+		send_back_forgot_password_errors (null, {res, form: "reset_password", errors: validate_errors, form_data: {reset_link: params.form_data.reset_phrase}});
+	}
+});
+
+// route for "authen/change_password"
+authen_router.route("/change_password")
+// get route: display change password form
+.get((req, res) => {
+	const params = {
+		page: "change_password",
+		host: helper.hostname,
+		title: "Change Password",
+		header_msg: "",
+		user_name: req.authen.user_name
+	};
+	res.render("index", params);
+})
+// post route: submit password change
+.put((req, res) => {
+	const params = {req, res};
+	params.form_data = {
+		old_password: helper.sanitize_data({data: req.body.old_password, no_trim: true}),
+		new_password: helper.sanitize_data({data: req.body.new_password, no_trim: true}),
+		retype_password: helper.sanitize_data({data: req.body.retype_password, no_trim: true}),
+	};
+
+	const validate_errors = validate_change_password(null, params.form_data);
+	if(validate_errors.length === 0) {
+		params.doc_data = params.form_data;
+		params.doc_data.user_email = req.authen.user_name;
+		params.doc_data.password = params.form_data.old_password;
+		params.user_email = params.doc_data.user_email;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
+		params.async_level = 5;
+		helper.async.waterfall([
+				(callback) => {callback(null, null, params);},
+				muser.user_info_fetch,
+				user_check_error_report,
+				muser.compare_user_password,
+				old_password_check_report,
+				muser.update_password,
+				password_change_report
+			], change_password_response
+		);
+	} else {
+		send_back_change_password_errors (null, {req, res, errors: validate_errors});
 	}
 });
 
 // check if user exists
 const user_check_error_report = (err, params, callback) => {
-	if(params.doc !== undefined && params.doc.name === "get_user_info") {
+	if ( params.doc !== undefined && params.doc.name === "user_info_fetch" ) {
 		params.user_info = params.doc.doc_info;
 		delete params.doc;
 	}
-	
-	if ( params.user_info !== undefined && params.user_info === null ) {
-		params.error_condition = true;
-		params.error_msg = ["User name / Email not found."];
+	if(params.user_info === null) {
+		params.errors = ["User name / Email not found."];
 		err = params;
 	}
+	helper.hmodels.error_handler(err, params, callback);
+};
+
+// check if old password is correct
+const old_password_check_report = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "compare_user_password") {
+		params.is_match = params.doc.is_match;
+		delete params.doc;
+	}
+	if ( params.is_match === false ) {
+		params.errors = ["Old password does not match."];
+		err = params;
+	}
+
 	helper.hmodels.error_handler(err, params, callback);
 };
 
@@ -236,6 +307,14 @@ const reset_link_existence_error_report = (err, params, callback) => {
 	} else if(params.reset_link_info.status === 3) {
 		// reset link expired
 		params.reset_message = ["The reset link has expired. Please repeat the Forgot Password process once again."];
+	} else {
+		// this value is required during the fetching of user in update_password method of user
+		params.user_email = params.reset_link_info.user_email;
+		if(params.doc_data === undefined) {
+			params.doc_data = {user_email: params.reset_link_info.user_email};
+		} else {
+			params.doc_data.user_email = params.reset_link_info.user_email;
+		}
 	}
 
 	if(params.reset_message !== undefined) {
@@ -258,9 +337,14 @@ const reset_link_expiry_error_report = (err, params, callback) => {
 
 // response after resetting password and changing status
 const password_change_report = (err, params, callback) => {
-	if(params.doc !== undefined && params.doc.name === "reset_link_status_change") {
-		delete params.doc;
-		params.reset_message = ["Password has been reset. <a href='/authen/'>Click here</a> to log in."];
+	if(params.doc !== undefined) {
+		if(params.doc.name === "reset_link_status_change") {
+			params.reset_message = ["Password has been reset. <a href='/authen/'>Click here</a> to log in."];
+			delete params.doc;
+		} else if (params.doc.name == "update_password") {
+			params.message = ["Password has been successfully changed. <a href='/authen/'>Click here</a> to log in."];
+			delete params.doc;
+		}
 	}
 	helper.hmodels.error_handler(err, params, callback);
 };
@@ -301,17 +385,21 @@ const send_error_or_log_uer = (err, params) => {
 	if ( err !== null ) {
 		params = err;
 	} else {
+		if(params.doc !== undefined && params.doc.name === "compare_user_password") {
+			params.is_match = params.doc.is_match;
+			delete params.doc;
+		}
+
 		if ( params.is_match === false ) {
-			params.error_condition = true;
-			params.error_msg = ["Password does not match."];
+			params.errors = ["Password does not match."];
 		} else {
 			log_user_session ( null, { req: params.req, user_info: params.user_info } );
 			params.res.redirect("/");
 		}
 	}
 
-	if ( params.error_condition !== undefined && params.error_condition === true ) {
-		send_back_authen_errors (null, {res: params.res, form: params.form, errors: params.error_msg, form_data: params.form_data});
+	if ( params.errors !== undefined && params.errors !== null ) {
+		send_back_authen_errors (null, {res: params.res, form: params.form, errors: params.errors, form_data: params.form_data});
 	} 
 };
 
@@ -362,10 +450,28 @@ const send_back_forgot_password_errors = (err, params) => {
 		header_msg: "Reset Password",
 		form: params.form,
 		errors: params.errors,
-		user_email: params.user_email,
-		reset_link: params.reset_link
 	};
+	if(params.form_data.user_email !== undefined) {
+		params_out.user_email = params.user_email;
+	}
+	if(params.form_data.reset_link !== undefined) {
+		params_out.reset_link = params.reset_link;
+	}
 	res.render('index', params_out);
+};
+
+// send the change password error messages
+const send_back_change_password_errors = (err, params) => {
+	const params_out = {
+		res: params.res,
+		page: 'change_password',
+		host: helper.hostname,
+		title: "Change Password",
+		header_msg: "",
+		errors: params.errors,
+		user_name: params.req.authen.user_name
+	};
+	params.res.render('index', params_out);
 };
 
 // validate email id
@@ -376,10 +482,10 @@ const validate_email = ( err, params ) => {
 
 	if(email_length === 0) {
 		error = "Please enter email id.";
-	} else if (helper.validator.isEmail(user_email) === false) {
-		error = "Please enter valid email id.";
 	} else  if (email_length > 100) {
 		error = "Email id too long.";
+	} else if (helper.validator.isEmail(user_email) === false) {
+		error = "Please enter valid email id.";
 	}
 
 	helper.push_error ( { error, errors: params.errors } );
@@ -461,6 +567,17 @@ const validate_reset_password = ( err, params ) => {
 	return errors;
 };
 
+// validate change password form
+const validate_change_password = ( err, params ) => {
+	let errors = [];
+
+	validate_password( null, { errors, password: params.old_password } );
+	validate_password( null, { errors, password: params.new_password } );
+	validate_retype_password( null, { errors, password: params.new_password, retype_password: params.retype_password } );
+
+	return errors;
+};
+
 // response of checking the existence of forgot password email
 const email_check_error_report = (err, params, callback) => {
 	const email_count = params.doc.doc_count;
@@ -477,7 +594,7 @@ const email_check_error_report = (err, params, callback) => {
 const forgot_password_response_message = (err, params) => {
 	if (err !== null) {
 		params = err;
-		send_back_forgot_password_errors (null, {res: params.res, form: "forgot_password", errors: params.errors, user_email: params.form_data.user_email});
+		send_back_forgot_password_errors (null, {res: params.res, form: "forgot_password", errors: params.errors, form_data: params.form_data});
 	} else {
 		// display message after sending password reset email
 		// for development mode display the reset link too
@@ -541,6 +658,25 @@ const reset_password_response = (err, params) => {
 		message: params.reset_message, 
 	};
 	params.res.render("index", params_out);
+};
+
+// response of changing the password
+const change_password_response = (err, params) => {
+	if ( err !== null ) {
+		params = err;
+		send_back_change_password_errors(null, params);
+	} else {
+		params.req.authen.reset();
+		const params_out = {
+			authen: false,
+			page: "message",
+			host: helper.hostname,
+			title: "Change Password",
+			header_msg: "",
+			message: params.message, 
+		};
+		params.res.render("index", params_out);
+	}
 };
 
 module.exports = authen_router;

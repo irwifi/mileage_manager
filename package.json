@@ -8,7 +8,7 @@
     "debug": "set NODE_ENV=development && node --debug-brk ./app/bin/www",
     "debug2": "start node-inspector && set NODE_ENV=development && node --debug-brk ./app/bin/www",
     "test": "set NODE_ENV=test && mocha test/cases --recursive --timeout 5000",
-    "coverage": "istanbul cover %APPDATA%/npm/node_modules/mocha/bin/_mocha -- test/cases/*"
+    "coverage": "istanbul cover %APPDATA%/npm/node_modules/mocha/bin/_mocha -- test/cases/* --timeout 5000"
   },
   "dependencies": {
     "async": "^2.1.2",

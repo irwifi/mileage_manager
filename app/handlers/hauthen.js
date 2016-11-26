@@ -13,7 +13,7 @@ module.exports = ( params ) => {
 		if (req.authen !== undefined && req.authen.user_id !== undefined) {
 			// user has logged in
 			// checks if the request url begins with /authen; that is route for /authen
-			if(authen_index === 0 && req.url !== "/authen/signout") {
+			if(authen_index === 0 &&  !(["/authen/signout", "/authen/change_password"].includes(req.url))) {
 				// redirect the authentication page to home page if the user is already logged in
 				res.redirect("/");
 			} else {

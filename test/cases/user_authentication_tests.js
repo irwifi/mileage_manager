@@ -101,6 +101,8 @@ describe('User Authentication Tests:', () => {
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.containIgnoreSpaces('<form id="form_signup"');
 				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signin"');
 				expect(res.text).to.containIgnoreSpaces('class="create_admin_checkbox"');
@@ -119,6 +121,8 @@ describe('User Authentication Tests:', () => {
 					.expect(200)
 					.end((err, res) => {
 						if (err) return async_callback(err);
+						expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+						expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 						expect(res.text).to.not.containIgnoreSpaces('<form id="form_signup"');
 						expect(res.text).to.containIgnoreSpaces('<form id="form_signin"');
 						async_callback(err);
@@ -137,6 +141,8 @@ describe('User Authentication Tests:', () => {
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.containIgnoreSpaces('<form id="form_signup"');
 				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signin"');
 				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
@@ -146,7 +152,7 @@ describe('User Authentication Tests:', () => {
 			});
 		});
 
-		it('Sign up submit with invalid email and password less than 6 characters', (done) => {
+		it('Sign up submit with invalid email and password shorter than 6 characters', (done) => {
 			request(app)
 			.post('/authen/signup')
 			.send({ signup_email: 'invalid_email', signup_password: '12345', signup_retype_password: '', user_role: '', first_admin: ''})
@@ -161,6 +167,22 @@ describe('User Authentication Tests:', () => {
 				expect(res.text).to.containIgnoreSpaces('Please enter valid email id.');
 				expect(res.text).to.containIgnoreSpaces('Password should be at least 6 characters.');
 				expect(res.text).to.containIgnoreSpaces('Retype password does not match.');
+				done();
+			});
+		});
+
+		it('Sign up submit with email longer than 100 characters and password mroe than 30 characters', (done) => {
+			request(app)
+			.post('/authen/signup')
+			.send({ signup_email: 'valid_12345678911234567892123456789312345678941234567895123456789612345678971234567898123456789912345678901@email.com', signup_password: '1234567891123456789212345678931', signup_retype_password: '', user_role: '', first_admin: ''})
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('<form id="form_signup"');
+				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signin"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Email id too long');
+				expect(res.text).to.containIgnoreSpaces('Password too long');
 				done();
 			});
 		});
@@ -190,6 +212,21 @@ describe('User Authentication Tests:', () => {
 					});
 				}
 			], done);
+		});
+
+		it('Sign up submit with non matching retype password', (done) => {
+			request(app)
+			.post('/authen/signup')
+			.send({ signup_email: 'valid@email.com', signup_password: '123456', signup_retype_password: '1234567', user_role: '', first_admin: ''})
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('<form id="form_signup"');
+				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signin"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Retype password does not match');
+				done();
+			});
 		});
 
 		it('Sign up submit with valid data', (done) => {
@@ -222,6 +259,8 @@ describe('User Authentication Tests:', () => {
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signup"');
 				expect(res.text).to.containIgnoreSpaces('<form id="form_signin"');
 				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
@@ -231,7 +270,7 @@ describe('User Authentication Tests:', () => {
 			});
 		});
 
-		it('Sign in submit with invalid email and password less than 6 characters', (done) => {
+		it('Sign in submit with invalid email and password shorter than 6 characters', (done) => {
 			request(app)
 			.post('/authen/signin')
 			.send({ signin_email: 'invalid_email', signin_password: '12345'})
@@ -245,6 +284,22 @@ describe('User Authentication Tests:', () => {
 				expect(res.text).to.not.containIgnoreSpaces('Please enter password.');
 				expect(res.text).to.containIgnoreSpaces('Please enter valid email id.');
 				expect(res.text).to.containIgnoreSpaces('Password should be at least 6 characters.');
+				done();
+			});
+		});
+
+		it('Sign in submit with email longer than 100 characters and password longer than 30 characters', (done) => {
+			request(app)
+			.post('/authen/signin')
+			.send({ signin_email: 'valid_12345678911234567892123456789312345678941234567895123456789612345678971234567898123456789912345678901@email.com', signin_password: '1234567891123456789212345678931'})
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('<form id="form_signup"');
+				expect(res.text).to.containIgnoreSpaces('<form id="form_signin"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Email id too long');
+				expect(res.text).to.containIgnoreSpaces('Password too long');
 				done();
 			});
 		});
@@ -298,7 +353,7 @@ describe('User Authentication Tests:', () => {
 		it('Sign in submit with correct email and password', (done) => {
 			async.series([
 				(async_callback) => {
-					muser.create_new_user(null, {form_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
+					muser.create_new_user(null, {doc_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
 				},
 				(async_callback) => {
 					request(app)
@@ -324,6 +379,8 @@ describe('User Authentication Tests:', () => {
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.containIgnoreSpaces('<form id="form_forgot_password"');
 				done();
 			});
@@ -353,6 +410,20 @@ describe('User Authentication Tests:', () => {
 				expect(res.text).to.containIgnoreSpaces('<form id="form_forgot_password"');
 				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
 				expect(res.text).to.containIgnoreSpaces('Please enter valid email id.');
+				done();
+			});
+		});
+
+		it('Forgot password submit with email longer than 100 characters', (done) => {
+			request(app)
+			.post('/authen/forgot_password')
+			.send({ forgot_email: 'valid_12345678911234567892123456789312345678941234567895123456789612345678971234567898123456789912345678901@email.com' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('<form id="form_forgot_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Email id too long');
 				done();
 			});
 		});
@@ -407,6 +478,8 @@ describe('User Authentication Tests:', () => {
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
+				expect(res.text).to.not.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.not.containIgnoreSpaces('navbar-right');
 				expect(res.text).to.containIgnoreSpaces('The reset link is not correct.');
 				expect(res.text).to.not.containIgnoreSpaces('<form id="form_reset_password"');
 				done();
@@ -493,7 +566,7 @@ describe('User Authentication Tests:', () => {
 			});
 		});
 
-		it('Reset password submit with password less than 6 characters', (done) => {
+		it('Reset password submit with password shorter than 6 characters', (done) => {
 			request(app)
 			.put('/authen/reset_password')
 			.send({ new_password: '12345', retype_password: '', reset_link: '' })
@@ -502,8 +575,35 @@ describe('User Authentication Tests:', () => {
 				if (err) return done(err);
 				expect(res.text).to.containIgnoreSpaces('<form id="form_reset_password"');
 				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
-				expect(res.text).to.containIgnoreSpaces('Password should be at least 6 characters.');
-				expect(res.text).to.containIgnoreSpaces('Retype password does not match.');
+				expect(res.text).to.containIgnoreSpaces('Password should be at least 6 characters');
+				done();
+			});
+		});
+
+		it('Reset password submit with password longer than 30 characters', (done) => {
+			request(app)
+			.put('/authen/reset_password')
+			.send({ new_password: '1234567891123456789212345678931', retype_password: '', reset_link: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('<form id="form_reset_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Password too long');
+				done();
+			});
+		});
+
+		it('Reset password submit with not matching retype password', (done) => {
+			request(app)
+			.put('/authen/reset_password')
+			.send({ new_password: '123456', retype_password: '1234567', reset_link: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('<form id="form_reset_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Retype password does not match');
 				done();
 			});
 		});
@@ -594,12 +694,12 @@ describe('User Authentication Tests:', () => {
 				(async_callback) => {
 					// insert user for test
 					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'345678', user_role: 'admin'}}, async_callback);
-				},				
+				},
 				(async_callback) => {
 					// insert pass_reset for test
 					insert_data(null, {doc: 'pass_resets', data: {user_email: 'abc@sample.com', reset_phrase:'reset_phrase', createdAt: new Date()}}, async_callback);
 				},
-				(async_callback) => {			
+				(async_callback) => {
 					request(app)
 					.put('/authen/reset_password')
 					.send({ new_password: '123456', retype_password: '123456', reset_link: 'reset_phrase' })
@@ -614,6 +714,158 @@ describe('User Authentication Tests:', () => {
 									expect(res.text).to.containIgnoreSpaces('Password has been reset.');
 									expect_object(null, {obj: user_info, obj_items: [['user_email', 'abc@sample.com']]});
 									muser.compare_password(null, {password: '123456', hash: user_info.password}, async_callback);
+								}
+							], (err, is_match) => {
+								expect(is_match).to.equal(true);
+								done();
+							}
+						);
+					});
+				}
+			], done);
+		});
+	});
+
+	// Change password functionality
+	describe('Change password functionality:', () => {
+		const logged_app = request.agent(app) ;
+
+		before((done) => {
+			async.series([
+				(async_callback) => {
+					hdb.db.collection('users').remove(
+						(err, result) => {
+							async_callback(err);
+						}
+					);
+				},
+				(async_callback) => {				
+					muser.create_new_user(null, {doc_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.post('/authen/signin')
+					.send({ signin_email: 'abc@sample.com', signin_password: '123456'})
+					.end((err, res) => {
+	          				if (err) return done(err);
+	          				done();
+	        			});
+				}
+			], done);
+		});
+
+		it('Change password response', (done) => {
+			request(app)
+			.get('/authen/change_password')
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('navbar-nav');
+				expect(res.text).to.containIgnoreSpaces('navbar-right');
+				expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+				done();
+			});
+		});
+
+		it('Change password submit without any input', (done) => {
+			request(app)
+			.put('/authen/change_password')
+			.send({ old_password: '', new_password: '', retype_password: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Please enter password');
+				done();
+			});
+		});
+
+		it('Change password submit with password shorter than 6 characters', (done) => {
+			request(app)
+			.put('/authen/change_password')
+			.send({ old_password: '12345', new_password: '12345', retype_password: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Password should be at least 6 characters');
+				done();
+			});
+		});
+
+		it('Change password submit with password longer than 30 characters', (done) => {
+			request(app)
+			.put('/authen/change_password')
+			.send({ old_password: '1234567891123456789212345678931', new_password: '1234567891123456789212345678931', retype_password: '' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Password too long');
+				done();
+			});
+		});
+
+		it('Change password submit with non matching retype password', (done) => {
+			request(app)
+			.put('/authen/change_password')
+			.send({ old_password: '123456', new_password: '123456', retype_password: '1234567' })
+			.expect(200)
+			.end((err, res) => {
+				if (err) return done(err);
+				expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger">');
+				expect(res.text).to.containIgnoreSpaces('Retype password does not match');
+				done();
+			});
+		});
+
+		it('Change password submit with incorrect old password', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert user for test
+					insert_data(null, {doc: 'users', data: {username:'abc@sample.com', user_email: 'abc@sample.com', password:'123456', user_role: 'admin'}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.put('/authen/change_password')
+					.send({ old_password: '1234567', new_password: '234567', retype_password: '234567' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('id="form_change_password"');
+						expect(res.text).to.not.containIgnoreSpaces('Password has been successfully changed');
+						expect(res.text).to.containIgnoreSpaces('Old password does not match');
+						done();
+					});
+				}
+			], done);
+		});
+
+		it('Change password submit with correct passwords', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert user for test
+					muser.create_new_user(null, {doc_data: {user_email: 'abc@sample.com', password: '123456', user_role: 'admin'}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.put('/authen/change_password')
+					.send({ old_password: '123456', new_password: '234567', retype_password: '234567' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "users", condition: {}, select: {}});},
+								find_one,
+								(user_info, async_callback) => {
+									expect(res.text).to.not.containIgnoreSpaces('id="form_change_password"');
+									expect(res.text).to.containIgnoreSpaces('Password has been successfully changed');
+									expect_object(null, {obj: user_info, obj_items: [['user_email', 'abc@sample.com']]});
+									muser.compare_password(null, {password: '234567', hash: user_info.password}, async_callback);
 								}
 							], (err, is_match) => {
 								expect(is_match).to.equal(true);

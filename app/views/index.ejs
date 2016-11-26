@@ -9,9 +9,11 @@
 
 		<!-- <- include('nav_path') -%> -->
 		<% if(typeof message !== 'undefined' )  {%>
-			<% for(msg in message) {%>
-				<p><%- message[msg] %></p>
-			<% } %>					
+			<div class="container">
+				<% for(msg in message) {%>
+					<p><%- message[msg] %></p>
+				<% } %>
+			</div>
 		<% } else { %>
 			<%- include(page) -%>
 		<% } %>
