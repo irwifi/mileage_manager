@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const hmodels = require("../handlers/hmodels");
 const musers = require("../models/musers");
 
+// mongoose.set('debug', true);
+
 // Define password reset schema
 const pass_resetSchema = new mongoose.Schema(
 	{
@@ -25,7 +27,7 @@ pass_reset.password_request_entry = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "password_request_entry";
 	params.doc.model = pass_reset.pass_reset_model;
-	params.doc.form_data = {user_email: params.form_data.user_email, reset_phrase: params.reset_phrase, status: 1};
+	params.doc.doc_data = {user_email: params.doc_data.user_email, reset_phrase: params.reset_phrase, status: 1};
 	hmodels.create_doc(err, params, callback);
 };
 
@@ -64,7 +66,7 @@ pass_reset.expired_link_status_change = (err, params, callback) => {
 		params.doc.name = "expired_link_status_change";
 		params.doc.model = pass_reset.pass_reset_model;
 		params.doc.condition = { reset_phrase: params.reset_phrase };
-		params.doc.form_data = { status : 3};
+		params.doc.doc_data = { status : 3};
 		params.doc.options = {};
 		hmodels.update_doc(err, params, callback);	
 	} else {
@@ -84,7 +86,7 @@ pass_reset.reset_link_status_change = (err, params, callback) => {
 		params.doc.name = "reset_link_status_change";
 		params.doc.model = pass_reset.pass_reset_model;
 		params.doc.condition = { reset_phrase: params.reset_phrase };
-		params.doc.form_data = { status : 2};
+		params.doc.doc_data = { status : 2};
 		params.doc.options = {};
 		hmodels.update_doc(err, params, callback);
 	} else {

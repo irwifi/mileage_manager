@@ -13,7 +13,7 @@ hmodels.count_doc = (err, params, callback) => {
 
 // create document 
 hmodels.create_doc = (err, params, callback) => {
-	params.doc.model.create(params.doc.form_data, (err, doc_info) => {
+	params.doc.model.create(params.doc.doc_data, (err, doc_info) => {
 		params.doc.doc_info = doc_info;
 		hmodels.error_handler(err, params, callback);
 	});
@@ -58,7 +58,7 @@ hmodels.find_one = (err, params, callback) => {
 
 // find one and update
 hmodels.find_one_and_update = (err, params, callback) => {
-	params.doc.model.findOneAndUpdate(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, doc_info) => {
+	params.doc.model.findOneAndUpdate(params.doc.condition, {$set: params.doc.doc_data}, params.doc.options, (err, doc_info) => {
 		params.doc.doc_info = doc_info;
 		hmodels.error_handler(err, params, callback);
 	});
@@ -66,7 +66,7 @@ hmodels.find_one_and_update = (err, params, callback) => {
 
 // save document
 hmodels.save_doc = (err, params, callback) => {
-	const new_instance = new params.doc.model(params.doc.form_data);
+	const new_instance = new params.doc.model(params.doc.doc_data);
 	new_instance.save((err, doc_info) => {
 		params.doc.doc_info = doc_info._doc;
 		hmodels.error_handler(err, params, callback);
@@ -75,7 +75,7 @@ hmodels.save_doc = (err, params, callback) => {
 
 // update document
 hmodels.update_doc = (err, params, callback) => {
-	params.doc.model.update(params.doc.condition, {$set: params.doc.form_data}, params.doc.options, (err, update_info) => {
+	params.doc.model.update(params.doc.condition, {$set: params.doc.doc_data}, params.doc.options, (err, update_info) => {
 		params.doc.update_info = update_info;
 		hmodels.error_handler(err, params, callback);
 	});

@@ -9,7 +9,7 @@ const hmodels = require("../handlers/hmodels");
 const readingsSchema = new mongoose.Schema(
 	{
 		date: {type: Date, required:true},
-		km_readings: {type: Number, required:true},
+		km_readings: {type: Number, required:true, unique: true},
 		fuel_added: {type: Number},
 		fuel_readings: {type: Number, required: true},
 		destination: {type: String, required: true}
@@ -37,7 +37,7 @@ readings.get_readings_info = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "get_readings_info";
 	params.doc.model = readings.readings_model;
-	params.doc.condition = { readings_email: params.form_data.readings_email };
+	params.doc.condition = { readings_email: params.doc_data.readings_email };
 	hmodels.find_one(null, params, callback);
 };
 
@@ -46,7 +46,7 @@ readings.repeatitive_entry_check = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "repeatitive_entry_check";
 	params.doc.model = readings.readings_model;
-	params.doc.condition = { km_readings: params.form_data.odo_readings };
+	params.doc.condition = { km_readings: params.doc_data.odo_readings };
 	hmodels.count_doc(null, params, callback);	
 };
 
@@ -55,7 +55,7 @@ readings.save_travel_info = (err, params, callback) => {
 	params.doc = {};
 	params.doc.name = "save_travel_info";
 	params.doc.model = readings.readings_model;
-	params.doc.form_data = {date: params.form_data.travel_date, km_readings: params.form_data.odo_readings, fuel_added: params.form_data.fuel_added, fuel_readings: params.form_data.fuel_readings, destination: params.form_data.destination};
+	params.doc.doc_data = {date: params.doc_data.travel_date, km_readings: params.doc_data.odo_readings, fuel_added: params.doc_data.fuel_added, fuel_readings: params.doc_data.fuel_readings, destination: params.doc_data.destination};
 	hmodels.create_doc(null, params, callback);
 };
 
