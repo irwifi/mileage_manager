@@ -49,6 +49,9 @@ a {
  }
 
 /* dashboard readings entry form >>>> */
+#form_readings {
+	margin-top: 20px;
+}
  .grid-divider {
 	position: relative;
 	padding: 0;
@@ -64,16 +67,15 @@ a {
 	bottom: 0;
 }
 .col-padding {
-	padding: 0 15px;
+	padding: 0 15px 15px;
 }
 /* <<<< dashboard readings entry form */
 
 /* readings entry section >>>> */
 .readings_entry_section {
 	padding-top: 362px;
-	padding-bottom: 60px;
+	padding-bottom: 40px;
 	background-image: url("../images/fuel.jpg");
-	/*background-size: 1100px 260px;*/
 	background-repeat: no-repeat;
 	background-color: #52B348;
 	background-position: right top; 
@@ -84,9 +86,8 @@ a {
 }
 
 .readings_entry_section button {
-	/*font-weight: bold;*/
 	font-size: 20px;
-	margin-top: 40px;
+	margin-top: 20px;
 	width: 320px;
 }
 
@@ -126,19 +127,26 @@ a {
 
 /* chart section */
 .chart_section {
-	margin-top: 60px;
-	padding-top: 400px;
+	margin-top: 40px;
 	background-image: url("../images/chart.jpg");
 	background-repeat: no-repeat;
 	background-position: center top; 
 }
 
+.chart_section  .container {
+	height: 660px;
+}
 
 /* list_section */
 .list_section {
-	margin-top:20px;
-	padding-top: 200px;
+	margin-top: 20px;
+	padding-top: 370px;
 	background-image: url("../images/data.jpg");
 	background-repeat: no-repeat;
 	background-position: center top; 
+}
+
+/* ct-chart */
+div.ct-chart {
+	height: 490px;
 }

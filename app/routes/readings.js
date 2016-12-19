@@ -12,43 +12,35 @@ readings_router.route('/')
 	render_dashboard(null, {res, req});
 })
 .post((req, res) => {
+	const params = {res, req};
 	if(req.body.destination === undefined) {
 		req.body.destination = '';
 	}
-	const form_data = {
+	params.form_data = {
 		travel_date: helper.sanitize_data({data: req.body.travel_date}).replace(/&#x2F;/g, "/"),
 		odo_readings: helper.sanitize_data({data: req.body.odo_readings}),
 		fuel_added: helper.sanitize_data({data: req.body.fuel_added}),
 		fuel_readings: helper.sanitize_data({data: req.body.fuel_readings}),
 		destination: helper.sanitize_data({data: req.body.destination})
 	};
-	const params = {res, req, form_data};
 
-	const validate_errors = validate_readings_entry(null, form_data);
+	const validate_errors = validate_readings_entry(null, params.form_data);
 
 	if(validate_errors.length === 0) {
-		// for returning to correct parameter in async callback
-		// this parameter is used in hmodels.error_handler method
+		params.doc_data = params.form_data;
+		// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
 		params.async_level = 2;
 		helper.async.waterfall([
 				(async_callback) => {async_callback(null, null, params);},
-				mreadings.repeatitive_entry_check,
-				repeatitive_entry_report,
+				mreadings.previous_entry_fetch,
+				previous_entry_check,
 				mreadings.save_travel_info
 			], travel_info_entry_report
 		);
 	} else {
-		render_dashboard(null, {res, req, errors: validate_errors, form_data});
+		render_dashboard(null, {res, req, errors: validate_errors, form_data: params.form_data});
 	}
 });
-
-// return tomorrow's date
-const tomorrow = () => {
-	const today = new Date();	
-	const tomorrow =  (today.getMonth() + 1) + '/' + (today.getDate() + 1) + '/' + today.getFullYear();
-
-	return  tomorrow;
-};
 
 // validate readings entry form
 const validate_readings_entry = (err, params, callback) => {
@@ -106,8 +98,10 @@ const validate_fuel_added = (err, params) => {
 
 	if (isNaN(fuel_added) === true) {
 		error = "Please enter valid added fuel amount.";
+	} else  if (fuel_added < 0) {
+		error = "Added fuel quantity can not be negative.";
 	} else  if (fuel_added > max_fuel_capacity) {
-		error = "Added fuel amount exceeds the maximum fuel capacity.";
+		error = "Added fuel quantity exceeds the maximum fuel capacity.";
 	}
 
 	helper.push_error ( { error, errors: params.errors } );
@@ -122,6 +116,8 @@ const validate_fuel_readings = (err, params) => {
 		error = "Please enter the fuel readings.";
 	} else  if (isNaN(fuel_readings) === true) {
 		error = "Please enter valid fuel readings.";
+	} else  if (fuel_readings < 0) {
+		error = "Fuel readings can not be negative.";
 	} else  if (fuel_readings > max_fuel_capacity) {
 		error = "Fuel readings exceeds the maximum fuel capacity.";
 	}
@@ -143,16 +139,30 @@ const validate_destination = (err, params) => {
 	helper.push_error ( { error, errors: params.errors } );
 };
 
-// displays the repetitive warning message if found
-const repeatitive_entry_report = (err, params, callback) => {
-	if(params.doc !== undefined && params.doc.name === "repeatitive_entry_check") {
-		params.readings_count = params.doc.doc_count;
+// compare the readings entry with previous one
+const previous_entry_check = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "previous_entry_fetch") {
+		params.previous_readings_info = params.doc.doc_info;
 		delete params.doc;
 
-		if(params.readings_count > 0) {
-			params.errors = ["Readings already exist at odometer reading value of " + params.form_data.odo_readings];
-			err = params;
-			delete params.async_level;
+		if(params.previous_readings_info !== null) {
+			params.errors = [];
+			if(params.previous_readings_info.km_readings > params.form_data.odo_readings) {
+				params.errors.push(["Odometer readings less than previous entry."]);
+			}
+			
+			if(params.form_data.fuel_readings > parseInt(params.form_data.fuel_added) + params.previous_readings_info.fuel_readings) {
+				params.errors.push(["Fuel readings higher than sum of added fuel and previous fuel readings."]);
+			}
+
+			if(new Date(params.previous_readings_info.date) - new Date(params.form_data.travel_date) > 0) {
+				params.errors.push(["Date can not be earlier than last entry."]);
+			}
+
+			if(params.errors !== undefined && params.errors.length > 0) {
+				err = params;
+				delete params.async_level;				
+			}
 		}
 	}
 	helper.hmodels.error_handler(err, params, callback);
@@ -194,21 +204,33 @@ const render_dashboard = (err, params) => {
 		params_out.jump = params.jump;
 	}
 
+	// params.async_level is used for returning to correct parameter in async callback. it is used in hmodels.error_handler method.
+	params.async_level = 2;
 	helper.async.waterfall([
 			(async_callback) => {async_callback(null, null, params);},
-			mreadings.destination_list_fetch
+			mreadings.destination_list_fetch,
+			destination_list_fetch_report,
+			mreadings.readings_data_fetch
 		], (err, params) => {
-			if(params.doc !== undefined && params.doc.name === "destination_list_fetch") {
-				params.destination_list = params.doc.doc_info;
+			if(params.doc !== undefined && params.doc.name === "readings_data_fetch") {
+				params_out.readings_data = params.doc.doc_info;
 				delete params.doc;
-
-				if(params.destination_list.length > 0) {
-					params_out.destination_list = params.destination_list;
-				}
 			}
-			params.res.render('index', params_out);			
+			if(params.destination_list.length > 0) {
+				params_out.destination_list = params.destination_list;
+			}
+			params.res.render('index', params_out);
 		}
 	);
 }
+
+const destination_list_fetch_report = (err, params, callback) => {
+	if(params.doc !== undefined && params.doc.name === "destination_list_fetch") {
+		params.destination_list = params.doc.doc_info;
+		delete params.doc;
+	}
+
+	helper.hmodels.error_handler(err, params, callback);
+};
 
 module.exports = readings_router;

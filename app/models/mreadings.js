@@ -8,11 +8,12 @@ const hmodels = require("../handlers/hmodels");
 // Define readings schema
 const readingsSchema = new mongoose.Schema(
 	{
-		date: {type: Date, required:true},
+		date: {type: String, required:true},
 		km_readings: {type: Number, required:true, unique: true},
 		fuel_added: {type: Number},
 		fuel_readings: {type: Number, required: true},
 		destination: {type: String, required: true}
+		// , cumulative_fuel: {type: Number, required: true}
 	},
 	{timestamps: true}
 );
@@ -32,22 +33,22 @@ readings.destination_list_fetch = (err, params, callback) => {
 	hmodels.distinct_doc(null, params, callback);
 };
 
-// fetch readings info
-readings.get_readings_info = (err, params, callback) => {
+// fetch the last readings entry
+readings.previous_entry_fetch = (err, params, callback) => {
 	params.doc = {};
-	params.doc.name = "get_readings_info";
+	params.doc.name = "previous_entry_fetch";
 	params.doc.model = readings.readings_model;
-	params.doc.condition = { readings_email: params.doc_data.readings_email };
+	params.doc.options = { sort: {'createdAt': -1}}; 
 	hmodels.find_one(null, params, callback);
 };
 
-// check if readings exists
-readings.repeatitive_entry_check = (err, params, callback) => {
+// fetch readings data
+readings.readings_data_fetch = (err, params, callback) => {
 	params.doc = {};
-	params.doc.name = "repeatitive_entry_check";
+	params.doc.name = "readings_data_fetch";
 	params.doc.model = readings.readings_model;
-	params.doc.condition = { km_readings: params.doc_data.odo_readings };
-	hmodels.count_doc(null, params, callback);	
+	params.doc.condition = { };
+	hmodels.find_doc(null, params, callback);
 };
 
 // enter travel info

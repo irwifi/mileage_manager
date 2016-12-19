@@ -73,12 +73,58 @@
 <section id = "chart_section" class = "chart_section">
 	<div class="container">
 		<h3>Numbers in Chart</h3>
-		mileage, km, fuel, drive vs time
+		<% if(typeof readings_data !== 'undefined' && readings_data.length > 0) { %>
+			<div>Odometer readings</div>
+			<div class="ct-chart ct-perfect-fourth"></div>
+			<div class="offset-sm-8 col-sm-12">
+				<a href="/readings/charts"><button type="submit" class="btn btn-primary btn pull-right"> Show more charts </button></a>
+			</div>
+		<% } else {%>
+			Chart data not available
+		<% } %>
 	</div>
 </section>
 
 <section id = "readings_list_section" class = "list_section">
 	<div class="container">
+		<h3>Travel Detail</h3>
+		<% if(typeof readings_data !== 'undefined' && readings_data.length > 0) { %>
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Date</th>
+						<th>Destination</th>
+						<th>Odometer Readings</th>
+						<th>Fuel Added</th>
+						<th>Fuel Readings</th>
+					</tr>
+				</thead>
+				<tbody>
+					<%
+					let counter = 0;
+					for (readings in readings_data) { 
+						counter += 1;
+					%>
+						<tr>
+							<td><%= counter %></td>
+							<td><%= readings_data[readings].date %></td>
+							<td><%= readings_data[readings].destination %></td>
+							<td><%= readings_data[readings].km_readings %></td>
+							<td><%= readings_data[readings].fuel_added %></td>
+							<td><%= readings_data[readings].fuel_readings %></td>
+							<td><button type="button" class="btn btn-secondary" ><span class="glyphicon glyphicon-pencil" ></span></button></td>
+							<td><button type="button" class="btn btn-secondary"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button></td>
+						</tr>
+					<% } %>
+				</tbody>
+			</table>
+			<div class="offset-sm-8 col-sm-12">
+				<a href="/readings/data"><button type="submit" class="btn btn-primary btn pull-right"> Show more details </button></a>
+			</div>
+		<% } else {%>
+			Travel data not available
+		<% } %>
 	</div>
 </section>
 
@@ -156,5 +202,39 @@
 			$(".old_destination_block").show();
 			$(".new_destination_block").hide();
 		});
+
+		chart_loader();
 	}); 
+
+	const chart_loader = () => {
+		<%
+			let counter = 0;
+			let label_array = [];
+			let series_array = [];
+			for (readings in readings_data) { 
+				counter += 1;
+				label_array.push(counter);
+				series_array.push(readings_data[readings].km_readings);
+			}
+		%>
+		const data = {
+			// A labels array that can contain any sort of values
+			labels: [<%= label_array %>],
+			// Our series array that contains series objects or in this case series data arrays
+			series: [
+				[<%= series_array %>]
+			]
+		};
+
+		// As options we currently only set a static size of 300x200 px. We can also omit this and use aspect ratio containers
+		// as you saw in the previous example
+		const options = {
+		 	height: 493
+		};
+
+		// Create a new line chart object where as first parameter we pass in a selector
+		// that is resolving to our chart container element. The Second parameter
+		// is the actual data object.
+		new Chartist.Line('.ct-chart', data, options);	
+	}
 </script>

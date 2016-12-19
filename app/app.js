@@ -38,6 +38,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/bootstrap-datepicker/dist/')); 
+app.use(express.static(__dirname.replace("app", "") + '/node_modules/chartist/dist/')); 
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/bootstrap/dist/')); // redirect bootstrap js and css files
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/jquery/dist')); // redirect JS jQuery
 app.use(express.static(__dirname.replace("app", "") + '/node_modules/jquery-validation/dist')); // redirect jquery-validation

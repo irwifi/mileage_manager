@@ -43,17 +43,22 @@ hmodels.error_handler = (err, params, callback) => {
 	}
 };
 
-// find one document
-hmodels.find_one = (err, params, callback) => {
-	if ( params.doc.select === undefined ) {
-		params.doc.select = "";
-	}
-
+// find documents
+hmodels.find_doc = (err, params, callback) => {
 	const model = params.doc.model;
-	model.findOne(params.doc.condition, (err, doc_info) => {
+	model.find(params.doc.condition, params.doc.select, params.doc.options , (err, doc_info) => {
 		params.doc.doc_info = doc_info;
 		hmodels.error_handler(err, params, callback);
-	}).select(params.doc.select);
+	});
+};
+
+// find one document
+hmodels.find_one = (err, params, callback) => {
+	const model = params.doc.model;
+	model.findOne(params.doc.condition, params.doc.select, params.doc.options , (err, doc_info) => {
+		params.doc.doc_info = doc_info;
+		hmodels.error_handler(err, params, callback);
+	});
 };
 
 // find one and update

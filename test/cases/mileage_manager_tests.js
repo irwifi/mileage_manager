@@ -16,6 +16,11 @@ const insert_data = (err, params, callback) => {
 	hdb.db.collection(params.doc).insert(params.data, callback);
 };
 
+// fetch document from database
+const find_doc = (err, params, callback) => {
+	hdb.db.collection(params.doc).find(params.condition, params.select, callback);
+};
+
 // fetch one document from database
 const find_one = (err, params, callback) => {
 	hdb.db.collection(params.doc).findOne(params.condition, params.select, callback);
@@ -33,9 +38,14 @@ const expect_object = (err, params) => {
 	}
 }
 
-// return date with difference from today
-const date_from_today = (difference) => {
-	const today = new Date();	
+// return date with mm/dd/YYYY format
+const date_from_today = (difference, date_stamp) => {
+	let today;
+	if(date_stamp === undefined) {
+		today = new Date();
+	} else {
+		today = new Date(date_stamp);
+	}
 	const return_date =  (today.getMonth() + 1) + '/' + (today.getDate() + difference) + '/' + today.getFullYear();
 
 	return  return_date;
@@ -127,7 +137,7 @@ describe('Mileage Manager Tests:', () => {
 			});
 		});
 
-		it('Dashboard response', (done) => {
+		it('Dashboard response without any data', (done) => {
 			logged_app
 			.get('/readings')
 			.expect(200)
@@ -138,9 +148,42 @@ describe('Mileage Manager Tests:', () => {
 				expect(res.text).to.containIgnoreSpaces('abc@sample.com');
 				expect(res.text).to.containIgnoreSpaces('<a href="/authen/signout"> Sign Out </a>');
 				expect(res.text).to.containIgnoreSpaces('id="form_readings"');
-				expect(res.text).to.containIgnoreSpaces('');
+				expect(res.text).to.containIgnoreSpaces('Chart data not available');
+				expect(res.text).to.containIgnoreSpaces('Travel data not available');
 				done();
 			});
+		});
+
+		it('Dashboard response with travel data', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert data for test
+					insert_data(null, {doc: 'readings', data: {date: date_from_today(0), km_readings: 1, fuel_added: 5, fuel_readings: 5, destination: 'Base'}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.get('/readings')
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						async.waterfall([
+							(async_callback) => {async_callback(null, null, {doc: "readings", condition: {}, select: {}});},
+								find_one
+							], (err, readings_data) => {
+								expect(res.text).to.containIgnoreSpaces('navbar-nav');
+								expect(res.text).to.containIgnoreSpaces('navbar-right');
+								expect(res.text).to.containIgnoreSpaces('abc@sample.com');
+								expect(res.text).to.containIgnoreSpaces('<a href="/authen/signout"> Sign Out </a>');
+								expect(res.text).to.containIgnoreSpaces('id="form_readings"');
+								expect(res.text).to.not.containIgnoreSpaces('Chart data not available');
+								expect(res.text).to.not.containIgnoreSpaces('Travel data not available');
+								expect_object(null, {obj: readings_data, obj_items: [['date', date_from_today(0)], ['km_readings', 1], ['fuel_added', 5], ['fuel_readings', 5], ['destination', 'Base']]});
+								done();
+							}
+						);
+					});
+				}
+			], done);
 		});
 	});
 
@@ -285,43 +328,70 @@ describe('Mileage Manager Tests:', () => {
 			});
 		});
 
-		//check for lower values too
-
-		// get maximum capacity value
-		it('Travel Info submit with exceeding values (date exceeding today, odometer readings exceeding 6 digits, fuel added and readings exceeding maximum capacity and desination name logner than 50 characters):', (done) => {
+		it('Travel Info submit with negative values (odometer readings less than 1, fuel added and readings quantity less than 0)', (done) => {
 			logged_app
 			.post('/readings')
-			.send({ travel_date: date_from_today(1), odo_readings: '1234567', fuel_added: '', fuel_readings: '', destination: '123456789112345678921234567893123456789412345678951' })
+			.send({ travel_date: date_from_today(0), odo_readings: '0', fuel_added: '-1', fuel_readings: '-1', destination: 'Kathmandu' })
 			.expect(200)
 			.end((err, res) => {
 				if (err) return done(err);
 				expect(res.text).to.containIgnoreSpaces('id="form_readings"');
 				expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
-				expect(res.text).to.containIgnoreSpaces('Date exceeds today');
 				expect(res.text).to.containIgnoreSpaces('Please enter valid odometer readings');
-				// expect(res.text).to.containIgnoreSpaces('Added fuel amount exceeds the maximum fuel capacity');
-				// expect(res.text).to.containIgnoreSpaces('Fuel readings exceeds the maximum fuel capacity');
-				expect(res.text).to.containIgnoreSpaces('Destination name too long');
+				expect(res.text).to.containIgnoreSpaces('Added fuel quantity can not be negative');
+				expect(res.text).to.containIgnoreSpaces('Fuel readings can not be negative');
 				done();
 			});
 		});
 
-		// repetitive data means readings already exists with same km_readings value
-		it('Travel Info submit with repetitive data', (done) => {
+		it('Travel Info submit with non complying to previous entry (date and odometer readings earlier than last entry and fuel_readings higher than sum of added fuel and last fuel readings)', (done) => {
 			async.series([
 				(async_callback) => {
-					// insert test readings record
-					insert_data(null, {doc: 'readings', data: {date: new Date(date_from_today(0)), km_readings: 5555, fuel_added: 10, fuel_readings: 15, destination: 'Kathmandu'}}, async_callback);
+					// insert settings for test
+					insert_data(null, {doc: 'settings', data: {km_mile: 'km', max_fuel_capacity: 18}}, async_callback);
+				},
+				(async_callback) => {
+					// insert readings for test
+					insert_data(null, {doc: 'readings', data: {date: date_from_today(0), km_readings: 1000, fuel_added: 0, fuel_readings: 10, destination: 'Kathmandu'}}, async_callback);
 				},
 				(async_callback) => {
 					logged_app
 					.post('/readings')
-					.send({ travel_date: date_from_today(0), odo_readings: '5555', fuel_added: '10', fuel_readings: '15', destination: 'Kathmandu' })
+					.send({ travel_date: date_from_today(-1), odo_readings: '999', fuel_added: '1', fuel_readings: '15', destination: 'Kathmandu' })
 					.expect(200)
 					.end((err, res) => {
 						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('id="form_readings"');
 						expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
-						expect(res.text).to.containIgnoreSpaces('Readings already exist at odometer reading value of 5555');
+						expect(res.text).to.containIgnoreSpaces('Date can not be earlier than last entry');
+						expect(res.text).to.containIgnoreSpaces('Odometer readings less than previous entry');
+						expect(res.text).to.containIgnoreSpaces('Fuel readings higher than sum of added fuel and previous fuel readings');
+						done();
+					});
+				}
+			], done);
+		});
+
+		it('Travel Info submit with exceeding values (date exceeding today, odometer readings exceeding 6 digits, fuel added and readings exceeding maximum capacity and desination name logner than 50 characters)', (done) => {
+			async.series([
+				(async_callback) => {
+					// insert settings for test
+					insert_data(null, {doc: 'settings', data: {km_mile: 'km', max_fuel_capacity: 18}}, async_callback);
+				},
+				(async_callback) => {
+					logged_app
+					.post('/readings')
+					.send({ travel_date: date_from_today(1), odo_readings: '1234567', fuel_added: '25', fuel_readings: '25', destination: '123456789112345678921234567893123456789412345678951' })
+					.expect(200)
+					.end((err, res) => {
+						if (err) return done(err);
+						expect(res.text).to.containIgnoreSpaces('id="form_readings"');
+						expect(res.text).to.containIgnoreSpaces('<div class="alert alert-danger');
+						expect(res.text).to.containIgnoreSpaces('Date exceeds today');
+						expect(res.text).to.containIgnoreSpaces('Please enter valid odometer readings');
+						expect(res.text).to.containIgnoreSpaces('Added fuel quantity exceeds the maximum fuel capacity');
+						expect(res.text).to.containIgnoreSpaces('Fuel readings exceeds the maximum fuel capacity');
+						expect(res.text).to.containIgnoreSpaces('Destination name too long');
 						done();
 					});
 				}
@@ -341,7 +411,7 @@ describe('Mileage Manager Tests:', () => {
 					], (err, readings_info) => {
 						expect(res.text).to.not.containIgnoreSpaces('<div class="alert alert-danger');
 						expect_object(null, {obj: readings_info, obj_items: [['km_readings', 5555], ['fuel_added', 10], ['fuel_readings', 15], ['destination', 'Kathmandu']]});
-						expect(readings_info.date.toString()).to.containIgnoreSpaces(new Date(date_from_today(0)).toString());
+						expect(readings_info.date.toString()).to.containIgnoreSpaces(date_from_today(0));
 						done();
 					}
 				);
